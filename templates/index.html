@@ -683,6 +683,7 @@
                             <th>CIF</th>
                             <th>Fecha</th>
                             <th>Concepto</th>
+                            <th>Divisa</th>
                             <th>Base</th>
                             <th>%IVA</th>
                             <th>IVA</th>
@@ -777,9 +778,14 @@
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
 
-        function formatCurrency(value) {
+        function formatCurrency(value, currency = 'EUR') {
             if (value === null || value === undefined) return '-';
-            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
+            try {
+                return new Intl.NumberFormat('es-ES', { style: 'currency', currency: currency }).format(value);
+            } catch (e) {
+                // Fallback for unknown currencies
+                return value.toFixed(2) + ' ' + currency;
+            }
         }
 
         processBtn.addEventListener('click', async () => {
@@ -862,16 +868,18 @@
                     ? `${r.accounting_account} - ${r.accounting_description || ''}`
                     : '-';
                 const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? `${r.tax_rate}%` : '-';
+                const currency = r.currency || 'EUR';
                 return `
                 <tr>
                     <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
                     <td>${r.tax_id || '-'}</td>
                     <td>${r.date || '-'}</td>
                     <td class="concept" title="${r.concept || '-'}">${r.concept || '-'}</td>
-                    <td class="amount">${formatCurrency(r.base_amount)}</td>
+                    <td class="amount">${currency}</td>
+                    <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
                     <td class="amount">${taxRate}</td>
-                    <td class="amount">${formatCurrency(r.tax_amount)}</td>
-                    <td class="amount">${formatCurrency(r.total)}</td>
+                    <td class="amount">${formatCurrency(r.tax_amount, currency)}</td>
+                    <td class="amount">${formatCurrency(r.total, currency)}</td>
                     <td class="account" title="${account}">${r.accounting_account || '-'}</td>
                     <td>
                         <span class="status-badge ${r.status === 'success' ? 'success' : 'error'}" title="${r.error || ''}">

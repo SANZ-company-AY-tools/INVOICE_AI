@@ -33,10 +33,11 @@ class ExcelGenerator:
             {'key': 'company_name', 'header': 'Emisor', 'width': 30},
             {'key': 'tax_id', 'header': 'CIF', 'width': 14},
             {'key': 'concept', 'header': 'Concepto', 'width': 35},
-            {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00 €'},
+            {'key': 'currency', 'header': 'Divisa', 'width': 8},
+            {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
             {'key': 'tax_rate', 'header': '%IVA', 'width': 8, 'format': '0"%"'},
-            {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00 €'},
-            {'key': 'total', 'header': 'Total', 'width': 14, 'format': '#,##0.00 €'},
+            {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00'},
+            {'key': 'total', 'header': 'Total', 'width': 14, 'format': '#,##0.00'},
             {'key': 'accounting_account', 'header': 'Cuenta', 'width': 10},
             {'key': 'accounting_description', 'header': 'Descripción Cuenta', 'width': 25},
         ]
@@ -82,7 +83,7 @@ class ExcelGenerator:
 
                 cell.border = self.border
 
-        # Add totals row
+        # Add totals row (note: totals only make sense for same-currency invoices)
         last_row = len([d for d in data if d.get('status') == 'success']) + 1
         if last_row > 1:
             total_row = last_row + 2
@@ -90,22 +91,22 @@ class ExcelGenerator:
             # Total label
             ws.cell(row=total_row, column=4, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Base total (column E = 5)
-            total_base = ws.cell(row=total_row, column=5)
-            total_base.value = f'=SUM(E2:E{last_row})'
-            total_base.number_format = '#,##0.00 €'
+            # Base total (column F = 6, after currency column)
+            total_base = ws.cell(row=total_row, column=6)
+            total_base.value = f'=SUM(F2:F{last_row})'
+            total_base.number_format = '#,##0.00'
             total_base.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # IVA total (column G = 7, after %IVA column)
-            total_iva = ws.cell(row=total_row, column=7)
-            total_iva.value = f'=SUM(G2:G{last_row})'
-            total_iva.number_format = '#,##0.00 €'
+            # IVA total (column H = 8)
+            total_iva = ws.cell(row=total_row, column=8)
+            total_iva.value = f'=SUM(H2:H{last_row})'
+            total_iva.number_format = '#,##0.00'
             total_iva.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Grand total (column H = 8)
-            total_cell = ws.cell(row=total_row, column=8)
-            total_cell.value = f'=SUM(H2:H{last_row})'
-            total_cell.number_format = '#,##0.00 €'
+            # Grand total (column I = 9)
+            total_cell = ws.cell(row=total_row, column=9)
+            total_cell.value = f'=SUM(I2:I{last_row})'
+            total_cell.number_format = '#,##0.00'
             total_cell.font = Font(bold=True, name='Calibri', size=12, color='000000')
 
         wb.save(output_path)

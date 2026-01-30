@@ -44,9 +44,10 @@ Tu tarea es analizar la imagen de una factura y extraer los siguientes datos en 
 - concept: Concepto breve de la factura
 - period_start: Fecha inicio período si aplica (YYYY-MM-DD, null si no)
 - period_end: Fecha fin período si aplica (YYYY-MM-DD, null si no)
+- currency: Código ISO de la divisa (EUR, USD, BRL, GBP, MXN, etc.)
 - base_amount: Base imponible (número decimal)
-- tax_rate: Porcentaje IVA (número, ej: 21)
-- tax_amount: Importe IVA (número decimal)
+- tax_rate: Porcentaje IVA/impuesto (número, ej: 21)
+- tax_amount: Importe IVA/impuesto (número decimal)
 - total: Total factura (número decimal)
 - accounting_account: Cuenta contable sugerida del PGC español (solo número, ej: "629")
 - accounting_description: Descripción breve de la cuenta (ej: "Otros servicios")
@@ -74,6 +75,7 @@ IMPORTANTE:
 - El emisor suele aparecer arriba con su logo, datos fiscales y "Factura emitida por"
 - El receptor/cliente suele aparecer como "Facturar a", "Cliente", "Datos del cliente"
 - NUNCA pongas el CIF del cliente/receptor. Si tienes dudas, pon null
+- currency: Detecta la divisa por símbolos (€, $, R$, £) o códigos. Usa códigos ISO: EUR, USD, BRL, GBP, MXN, CLP, ARS, etc.
 - Sugiere la cuenta contable más apropiada según el concepto
 - Si no puedes determinar la cuenta, usa "629" (Otros servicios)
 - Importes como números decimales (ej: 1234.56)
@@ -255,6 +257,7 @@ IMPORTANTE:
                 'concept': extracted.get('concept'),
                 'period_start': extracted.get('period_start'),
                 'period_end': extracted.get('period_end'),
+                'currency': extracted.get('currency', 'EUR'),
                 'base_amount': self._parse_number(extracted.get('base_amount')),
                 'tax_rate': self._parse_number(extracted.get('tax_rate')),
                 'tax_amount': self._parse_number(extracted.get('tax_amount')),
