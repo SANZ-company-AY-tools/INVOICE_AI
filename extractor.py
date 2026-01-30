@@ -12,6 +12,9 @@ from pdf2image import convert_from_path
 from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
+from docx import Document
+from docx.shared import Inches
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -127,24 +130,75 @@ IMPORTANTE:
             result.append((base64_data, 'image/png'))
         return result
 
+    def _load_docx_as_base64(self, docx_path: str) -> List[tuple[str, str]]:
+        """Extract images from Word document or convert to image if no images found."""
+        doc = Document(docx_path)
+        images_data = []
+
+        # Try to extract embedded images
+        for rel in doc.part.rels.values():
+            if "image" in rel.reltype:
+                try:
+                    image_data = rel.target_part.blob
+                    image = Image.open(BytesIO(image_data))
+                    if image.mode in ('RGBA', 'P', 'LA'):
+                        image = image.convert('RGB')
+                    base64_data = self._image_to_base64(image, 'PNG')
+                    images_data.append((base64_data, 'image/png'))
+                except Exception:
+                    continue
+
+        # If no images found, extract text and send as context
+        if not images_data:
+            # Extract all text from document
+            full_text = []
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    full_text.append(para.text)
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = [cell.text for cell in row.cells]
+                    full_text.append(' | '.join(row_text))
+
+            # Create a simple image with text info for Claude
+            # Since we have text, we'll pass it differently
+            text_content = '\n'.join(full_text)
+            return [('TEXT_CONTENT', text_content)]
+
+        return images_data
+
     def _call_claude_vision(self, images_data: List[tuple[str, str]]) -> Dict:
         """Call Claude API with images and extract invoice data."""
         # Build content with all images
         content = []
-        for base64_data, media_type in images_data:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": media_type,
-                    "data": base64_data,
-                }
-            })
+        has_text_content = False
+        text_content = ""
 
-        content.append({
-            "type": "text",
-            "text": "Extrae los datos de esta factura y devuelve SOLO el JSON con los campos especificados."
-        })
+        for base64_data, media_type in images_data:
+            if base64_data == 'TEXT_CONTENT':
+                # This is text from a Word document without images
+                has_text_content = True
+                text_content = media_type
+            else:
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": base64_data,
+                    }
+                })
+
+        if has_text_content:
+            content.append({
+                "type": "text",
+                "text": f"Extrae los datos de esta factura (contenido del documento Word):\n\n{text_content}\n\nDevuelve SOLO el JSON con los campos especificados."
+            })
+        else:
+            content.append({
+                "type": "text",
+                "text": "Extrae los datos de esta factura y devuelve SOLO el JSON con los campos especificados."
+            })
 
         # Call Claude API
         message = self.client.messages.create(
@@ -183,6 +237,8 @@ IMPORTANTE:
                 images_data = self._load_pdf_as_base64(file_path)
             elif ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.gif', '.webp']:
                 images_data = [self._load_image_as_base64(file_path)]
+            elif ext in ['.docx', '.doc']:
+                images_data = self._load_docx_as_base64(file_path)
             else:
                 raise ValueError(f"Unsupported file format: {ext}")
 

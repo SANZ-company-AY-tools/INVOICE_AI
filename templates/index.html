@@ -626,9 +626,10 @@
                     <span class="format-tag">PDF</span>
                     <span class="format-tag">PNG</span>
                     <span class="format-tag">JPG</span>
+                    <span class="format-tag">DOCX</span>
                     <span class="format-tag">TIFF</span>
                 </div>
-                <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.gif">
+                <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.gif,.docx,.doc">
             </div>
 
             <div class="file-list" id="fileList"></div>
@@ -683,6 +684,7 @@
                             <th>Fecha</th>
                             <th>Concepto</th>
                             <th>Base</th>
+                            <th>%IVA</th>
                             <th>IVA</th>
                             <th>Total</th>
                             <th>Cuenta</th>
@@ -859,6 +861,7 @@
                 const account = r.accounting_account
                     ? `${r.accounting_account} - ${r.accounting_description || ''}`
                     : '-';
+                const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? `${r.tax_rate}%` : '-';
                 return `
                 <tr>
                     <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
@@ -866,6 +869,7 @@
                     <td>${r.date || '-'}</td>
                     <td class="concept" title="${r.concept || '-'}">${r.concept || '-'}</td>
                     <td class="amount">${formatCurrency(r.base_amount)}</td>
+                    <td class="amount">${taxRate}</td>
                     <td class="amount">${formatCurrency(r.tax_amount)}</td>
                     <td class="amount">${formatCurrency(r.total)}</td>
                     <td class="account" title="${account}">${r.accounting_account || '-'}</td>

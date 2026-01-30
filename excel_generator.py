@@ -34,6 +34,7 @@ class ExcelGenerator:
             {'key': 'tax_id', 'header': 'CIF', 'width': 14},
             {'key': 'concept', 'header': 'Concepto', 'width': 35},
             {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00 €'},
+            {'key': 'tax_rate', 'header': '%IVA', 'width': 8, 'format': '0"%"'},
             {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00 €'},
             {'key': 'total', 'header': 'Total', 'width': 14, 'format': '#,##0.00 €'},
             {'key': 'accounting_account', 'header': 'Cuenta', 'width': 10},
@@ -95,15 +96,15 @@ class ExcelGenerator:
             total_base.number_format = '#,##0.00 €'
             total_base.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # IVA total (column F = 6)
-            total_iva = ws.cell(row=total_row, column=6)
-            total_iva.value = f'=SUM(F2:F{last_row})'
+            # IVA total (column G = 7, after %IVA column)
+            total_iva = ws.cell(row=total_row, column=7)
+            total_iva.value = f'=SUM(G2:G{last_row})'
             total_iva.number_format = '#,##0.00 €'
             total_iva.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Grand total (column G = 7)
-            total_cell = ws.cell(row=total_row, column=7)
-            total_cell.value = f'=SUM(G2:G{last_row})'
+            # Grand total (column H = 8)
+            total_cell = ws.cell(row=total_row, column=8)
+            total_cell.value = f'=SUM(H2:H{last_row})'
             total_cell.number_format = '#,##0.00 €'
             total_cell.font = Font(bold=True, name='Calibri', size=12, color='000000')
 
