@@ -31,7 +31,9 @@ class ExcelGenerator:
         self.columns = [
             {'key': 'date', 'header': 'Fecha', 'width': 12},
             {'key': 'company_name', 'header': 'Emisor', 'width': 30},
-            {'key': 'tax_id', 'header': 'CIF', 'width': 14},
+            {'key': 'tax_id', 'header': 'CIF Emisor', 'width': 14},
+            {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
+            {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
             {'key': 'concept', 'header': 'Concepto', 'width': 35},
             {'key': 'currency', 'header': 'Divisa', 'width': 8},
             {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
@@ -91,24 +93,24 @@ class ExcelGenerator:
         if last_row > 1:
             total_row = last_row + 2
 
-            # Total label
-            ws.cell(row=total_row, column=4, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
+            # Total label (column F = 6 = Concepto)
+            ws.cell(row=total_row, column=6, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Base total (column F = 6, after currency column)
-            total_base = ws.cell(row=total_row, column=6)
-            total_base.value = f'=SUM(F2:F{last_row})'
+            # Base total (column H = 8)
+            total_base = ws.cell(row=total_row, column=8)
+            total_base.value = f'=SUM(H2:H{last_row})'
             total_base.number_format = '#,##0.00'
             total_base.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # IVA total (column H = 8)
-            total_iva = ws.cell(row=total_row, column=8)
-            total_iva.value = f'=SUM(H2:H{last_row})'
+            # IVA total (column J = 10)
+            total_iva = ws.cell(row=total_row, column=10)
+            total_iva.value = f'=SUM(J2:J{last_row})'
             total_iva.number_format = '#,##0.00'
             total_iva.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Grand total (column I = 9)
-            total_cell = ws.cell(row=total_row, column=9)
-            total_cell.value = f'=SUM(I2:I{last_row})'
+            # Grand total (column K = 11)
+            total_cell = ws.cell(row=total_row, column=11)
+            total_cell.value = f'=SUM(K2:K{last_row})'
             total_cell.number_format = '#,##0.00'
             total_cell.font = Font(bold=True, name='Calibri', size=12, color='000000')
 

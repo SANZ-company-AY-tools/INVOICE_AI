@@ -39,6 +39,8 @@ Tu tarea es analizar la imagen de una factura y extraer los siguientes datos en 
 
 - company_name: Nombre de la empresa EMISORA (quien emite/vende, NO el cliente)
 - tax_id: NIF/CIF del EMISOR (NO del cliente/receptor)
+- receiver_name: Nombre del RECEPTOR/CLIENTE (a quien va dirigida la factura)
+- receiver_tax_id: NIF/CIF del RECEPTOR/CLIENTE
 - invoice_number: Número de factura
 - date: Fecha de emisión (formato YYYY-MM-DD)
 - concept: Concepto breve de la factura
@@ -252,6 +254,8 @@ IMPORTANTE:
                 'file_name': os.path.basename(file_path),
                 'company_name': extracted.get('company_name'),
                 'tax_id': extracted.get('tax_id'),
+                'receiver_name': extracted.get('receiver_name'),
+                'receiver_tax_id': extracted.get('receiver_tax_id'),
                 'invoice_number': extracted.get('invoice_number'),
                 'date': extracted.get('date'),
                 'concept': extracted.get('concept'),
