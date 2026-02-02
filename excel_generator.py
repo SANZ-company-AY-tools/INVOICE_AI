@@ -59,14 +59,15 @@ class ExcelGenerator:
         # Freeze header
         ws.freeze_panes = 'A2'
 
-        # Write data
-        for row_idx, invoice in enumerate(data, 2):
+        # Write data - track actual row number
+        current_row = 2
+        for invoice in data:
             if invoice.get('status') != 'success':
                 continue  # Skip failed extractions
 
             for col_idx, col_config in enumerate(self.columns, 1):
                 value = invoice.get(col_config['key'])
-                cell = ws.cell(row=row_idx, column=col_idx)
+                cell = ws.cell(row=current_row, column=col_idx)
 
                 if col_config['key'] == 'accounting_account':
                     cell.value = value
@@ -83,8 +84,10 @@ class ExcelGenerator:
 
                 cell.border = self.border
 
+            current_row += 1
+
         # Add totals row (note: totals only make sense for same-currency invoices)
-        last_row = len([d for d in data if d.get('status') == 'success']) + 1
+        last_row = current_row - 1
         if last_row > 1:
             total_row = last_row + 2
 
