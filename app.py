@@ -11,11 +11,16 @@ from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_file, url_for, redirect, session
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from extractor import InvoiceExtractor
 from excel_generator import ExcelGenerator
 
 app = Flask(__name__)
+
+# Fix for running behind a proxy (Railway, Heroku, etc.) - ensures HTTPS URLs
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # Secret key for session
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.urandom(24))
