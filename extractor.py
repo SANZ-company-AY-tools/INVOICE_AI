@@ -307,10 +307,29 @@ IMPORTANTE:
                 return None
         return None
 
-    def process_multiple_files(self, file_paths: List[str]) -> List[Dict]:
-        """Process multiple invoice files."""
-        results = []
-        for file_path in file_paths:
-            data = self.extract_data(file_path)
-            results.append(data)
+    def process_multiple_files(self, file_paths: List[str], max_workers: int = 5) -> List[Dict]:
+        """Process multiple invoice files in parallel."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        results = [None] * len(file_paths)  # Preserve order
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_index = {
+                executor.submit(self.extract_data, path): i
+                for i, path in enumerate(file_paths)
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                try:
+                    results[index] = future.result()
+                except Exception as e:
+                    results[index] = {
+                        'file_name': os.path.basename(file_paths[index]),
+                        'status': 'error',
+                        'error': str(e)
+                    }
+
         return results
