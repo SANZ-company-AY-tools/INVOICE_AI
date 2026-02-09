@@ -74,15 +74,17 @@ CUENTAS CONTABLES COMUNES (PGC España):
 
 IMPORTANTE:
 - Responde SOLO con el JSON, sin texto adicional ni markdown
-- tax_id: SOLO el CIF/NIF del EMISOR (quien factura). Si no puedes distinguirlo del receptor con certeza, pon null
+- tax_id: SOLO el CIF/NIF del EMISOR (quien factura). Si no puedes distinguirlo del receptor con certeza, pon "REVISAR"
 - El emisor suele aparecer arriba con su logo, datos fiscales y "Factura emitida por"
 - El receptor/cliente suele aparecer como "Facturar a", "Cliente", "Datos del cliente"
-- NUNCA pongas el CIF del cliente/receptor. Si tienes dudas, pon null
+- NUNCA pongas el CIF del cliente/receptor en tax_id
+- order_number: Busca referencias como "P.O.", "Pedido N", "Pedido C", "Pedido", "N Pedido", "Nº Pedido". Suelen empezar por 46. Si NO encuentras número de pedido, pon null (no fuerces)
 - currency: Detecta la divisa por símbolos (€, $, R$, £) o códigos. Usa códigos ISO: EUR, USD, BRL, GBP, MXN, CLP, ARS, etc.
 - Sugiere la cuenta contable más apropiada según el concepto
 - Si no puedes determinar la cuenta, usa "629" (Otros servicios)
 - Importes como números decimales (ej: 1234.56)
-- Fechas en formato YYYY-MM-DD"""
+- Fechas en formato YYYY-MM-DD
+- CAMPOS VACÍOS: Si no puedes extraer un campo (excepto order_number), pon "REVISAR" en vez de null"""
 
     def _image_to_base64(self, image: Image.Image, format: str = "PNG") -> str:
         """Convert PIL Image to base64 string."""
