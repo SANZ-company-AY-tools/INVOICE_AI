@@ -324,6 +324,17 @@
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
         }
 
+        .btn-sharepoint {
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.35);
+        }
+
+        .btn-sharepoint:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 120, 212, 0.45);
+        }
+
         .btn svg {
             width: 20px;
             height: 20px;
@@ -710,6 +721,12 @@
             </div>
 
             <div class="actions">
+                <button class="btn btn-sharepoint" id="sharepointBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.5 17.5c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5c1.103 0 2.103.4 2.888 1.062l-1.168 1.168A2.973 2.973 0 0010.5 10c-1.654 0-3 1.346-3 3s1.346 3 3 3c1.302 0 2.407-.833 2.816-2H10.5v-1.5h4.5v.75c0 2.485-2.015 4.25-4.5 4.25z"/>
+                    </svg>
+                    Importar desde SharePoint
+                </button>
                 <button class="btn btn-primary" id="processBtn" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -965,6 +982,59 @@
             resultsSection.classList.add('visible');
             processBtn.disabled = false;
         }
+
+        // SharePoint integration
+        const sharepointBtn = document.getElementById('sharepointBtn');
+
+        sharepointBtn.addEventListener('click', async () => {
+            const clientId = '{{ client_id }}';
+            const redirectUri = window.location.origin + '/sharepoint/callback';
+
+            // Open Microsoft picker
+            const pickerUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
+                `client_id=${clientId}` +
+                `&response_type=token` +
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                `&scope=${encodeURIComponent('Files.Read.All Sites.Read.All')}` +
+                `&prompt=select_account`;
+
+            const popup = window.open(pickerUrl, 'SharePointPicker', 'width=600,height=700');
+
+            // Listen for message from popup
+            window.addEventListener('message', async function handler(event) {
+                if (event.origin !== window.location.origin) return;
+
+                if (event.data.type === 'sharepoint_files') {
+                    window.removeEventListener('message', handler);
+                    popup.close();
+
+                    // Download files from SharePoint
+                    for (const file of event.data.files) {
+                        try {
+                            const response = await fetch('/sharepoint/download', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    downloadUrl: file.downloadUrl,
+                                    name: file.name,
+                                    accessToken: event.data.accessToken
+                                })
+                            });
+
+                            if (response.ok) {
+                                const blob = await response.blob();
+                                const downloadedFile = new File([blob], file.name, { type: blob.type });
+                                selectedFiles.push(downloadedFile);
+                            }
+                        } catch (err) {
+                            console.error('Error downloading file:', err);
+                        }
+                    }
+
+                    renderFileList();
+                }
+            });
+        });
     </script>
 </body>
 </html>

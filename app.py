@@ -130,7 +130,95 @@ def logout():
 def index():
     """Render main page."""
     user = session.get('user', {})
-    return render_template('index.html', user=user)
+    return render_template('index.html', user=user, client_id=AZURE_CLIENT_ID)
+
+
+@app.route('/sharepoint/callback')
+def sharepoint_callback():
+    """Callback page for SharePoint file picker."""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head><title>SharePoint Picker</title></head>
+    <body>
+        <h2>Selecciona archivos de SharePoint</h2>
+        <div id="picker"></div>
+        <script>
+            // Get access token from URL fragment
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+
+            if (accessToken) {
+                // Fetch files from OneDrive/SharePoint root
+                fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+                    headers: { 'Authorization': 'Bearer ' + accessToken }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    const picker = document.getElementById('picker');
+                    picker.innerHTML = '<h3>Tus archivos:</h3>';
+
+                    const allowedExts = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.tiff'];
+                    const files = data.value.filter(f => f.file && allowedExts.some(ext => f.name.toLowerCase().endsWith(ext)));
+
+                    files.forEach(file => {
+                        const btn = document.createElement('button');
+                        btn.textContent = file.name;
+                        btn.style.cssText = 'display:block;margin:5px;padding:10px;cursor:pointer;';
+                        btn.onclick = () => {
+                            window.opener.postMessage({
+                                type: 'sharepoint_files',
+                                accessToken: accessToken,
+                                files: [{
+                                    name: file.name,
+                                    downloadUrl: file['@microsoft.graph.downloadUrl']
+                                }]
+                            }, window.location.origin);
+                        };
+                        picker.appendChild(btn);
+                    });
+
+                    if (files.length === 0) {
+                        picker.innerHTML += '<p>No se encontraron facturas (PDF, PNG, JPG, DOCX)</p>';
+                    }
+                })
+                .catch(err => {
+                    document.body.innerHTML = '<p>Error al cargar archivos: ' + err.message + '</p>';
+                });
+            } else {
+                document.body.innerHTML = '<p>Error de autenticación</p>';
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+
+@app.route('/sharepoint/download', methods=['POST'])
+@login_required
+def sharepoint_download():
+    """Download file from SharePoint/OneDrive."""
+    import requests
+
+    data = request.get_json()
+    download_url = data.get('downloadUrl')
+    filename = data.get('name')
+    access_token = data.get('accessToken')
+
+    if not download_url or not access_token:
+        return jsonify({'error': 'Missing download URL or token'}), 400
+
+    # Download file from Microsoft Graph
+    response = requests.get(download_url, headers={'Authorization': f'Bearer {access_token}'})
+
+    if response.ok:
+        return response.content, 200, {
+            'Content-Type': response.headers.get('Content-Type', 'application/octet-stream'),
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
+
+    return jsonify({'error': 'Failed to download file'}), 500
 
 
 @app.route('/upload', methods=['POST'])
