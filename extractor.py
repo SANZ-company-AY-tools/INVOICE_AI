@@ -42,6 +42,7 @@ Tu tarea es analizar la imagen de una factura y extraer los siguientes datos en 
 - receiver_name: Nombre del RECEPTOR/CLIENTE (a quien va dirigida la factura)
 - receiver_tax_id: NIF/CIF del RECEPTOR/CLIENTE
 - invoice_number: Número de factura
+- order_number: Número de pedido (si aparece, sino null)
 - date: Fecha de emisión (formato YYYY-MM-DD)
 - concept: Concepto breve de la factura
 - period_start: Fecha inicio período si aplica (YYYY-MM-DD, null si no)
@@ -257,6 +258,7 @@ IMPORTANTE:
                 'receiver_name': extracted.get('receiver_name'),
                 'receiver_tax_id': extracted.get('receiver_tax_id'),
                 'invoice_number': extracted.get('invoice_number'),
+                'order_number': extracted.get('order_number'),
                 'date': extracted.get('date'),
                 'concept': extracted.get('concept'),
                 'period_start': extracted.get('period_start'),

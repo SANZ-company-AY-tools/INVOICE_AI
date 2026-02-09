@@ -747,6 +747,7 @@
                             <th>CIF Emisor</th>
                             <th>Receptor</th>
                             <th>CIF Receptor</th>
+                            <th>Nº Pedido</th>
                             <th>Fecha</th>
                             <th>Concepto</th>
                             <th>Divisa</th>
@@ -941,6 +942,7 @@
                     <td>${r.tax_id || '-'}</td>
                     <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
                     <td>${r.receiver_tax_id || '-'}</td>
+                    <td>${r.order_number || '-'}</td>
                     <td>${r.date || '-'}</td>
                     <td class="concept" title="${r.concept || '-'}">${r.concept || '-'}</td>
                     <td class="amount">${currency}</td>
