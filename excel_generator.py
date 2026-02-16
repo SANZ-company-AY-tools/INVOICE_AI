@@ -1,9 +1,11 @@
 """
 Excel and CSV generator module for invoice data export.
 Creates clean Excel files and SAP-compatible CSV from extracted invoice data.
+Two formats: CON PEDIDO (MIRO) and SIN PEDIDO (FI).
 """
 
 import csv
+from datetime import date
 from typing import List, Dict
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -34,15 +36,10 @@ def _get_sociedad(receiver_name: str) -> str:
 
 
 def _expand_invoices(data: List[Dict]) -> List[Dict]:
-    """Expand invoices so each combination of order number + tax line gets its own row.
-
-    Examples:
-    - Invoice with 2 order numbers and 1 tax rate = 2 rows
-    - Invoice with 1 order number and 2 tax rates = 2 rows
-    - Invoice with 2 order numbers and 2 tax rates = 4 rows
-    - Invoice with 0 order numbers and 1 tax rate = 1 row
-    """
+    """Expand invoices so each combination of order number + tax line gets its own row."""
     expanded = []
+    today = date.today().strftime('%Y-%m-%d')
+
     for invoice in data:
         if invoice.get('status') != 'success':
             continue
@@ -55,17 +52,19 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
 
         tax_lines = invoice.get('tax_lines', [])
         if not tax_lines or not isinstance(tax_lines, list):
-            # Fallback for legacy format
             tax_lines = [{
                 'base_amount': invoice.get('base_amount'),
                 'tax_rate': invoice.get('tax_rate'),
                 'tax_amount': invoice.get('tax_amount'),
             }]
 
-        # Determine sociedad from receiver name
         sociedad = _get_sociedad(invoice.get('receiver_name', ''))
 
-        # Create one row per order_number × tax_line combination
+        # Build "Texto" field: proveedor - nº factura
+        proveedor = invoice.get('company_name', '')
+        num_factura = invoice.get('invoice_number', '')
+        texto = f"{proveedor} - {num_factura}" if proveedor and num_factura else proveedor or num_factura or ''
+
         for on in order_nums:
             for tl in tax_lines:
                 row = dict(invoice)
@@ -74,76 +73,96 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
                 row['tax_rate'] = tl.get('tax_rate')
                 row['tax_amount'] = tl.get('tax_amount')
                 row['sociedad'] = sociedad
+                row['fecha_contab'] = today
+                row['texto'] = texto
+                row['cuenta_proveedor'] = ''  # Always empty - user fills in SAP
+                row['cuenta_mayor'] = ''  # Always empty - user fills in SAP
                 expanded.append(row)
 
     return expanded
+
+
+# ─── Column definitions for each format ────────────────────────────────────
+
+# CON PEDIDO (MIRO)
+COLUMNS_CON_PEDIDO = [
+    {'key': 'date', 'header': 'Fecha Factura', 'width': 14},
+    {'key': 'fecha_contab', 'header': 'Fecha Contab.', 'width': 14},
+    {'key': 'invoice_number', 'header': 'Referencia', 'width': 16},
+    {'key': 'company_name', 'header': 'Nombre Proveedor', 'width': 30},
+    {'key': 'tax_id', 'header': 'CIF Proveedor', 'width': 14},
+    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
+    {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
+    {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
+    {'key': 'sociedad', 'header': 'Cód. Empresa', 'width': 12},
+    {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
+    {'key': 'tax_rate', 'header': '% IVA', 'width': 8, 'format': '0"%"'},
+    {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00'},
+    {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
+    {'key': 'texto', 'header': 'Texto', 'width': 35},
+    {'key': 'order_number', 'header': 'Nº Pedido', 'width': 16},
+]
+
+# SIN PEDIDO (FI)
+COLUMNS_SIN_PEDIDO = [
+    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
+    {'key': 'date', 'header': 'Fecha Factura', 'width': 14},
+    {'key': 'fecha_contab', 'header': 'Fecha Contab.', 'width': 14},
+    {'key': 'invoice_number', 'header': 'Referencia', 'width': 16},
+    {'key': 'company_name', 'header': 'Nombre Proveedor', 'width': 30},
+    {'key': 'tax_id', 'header': 'CIF Proveedor', 'width': 14},
+    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
+    {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
+    {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
+    {'key': 'sociedad', 'header': 'Cód. Empresa', 'width': 12},
+    {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
+    {'key': 'tax_rate', 'header': 'Código IVA', 'width': 10},
+    {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
+    {'key': 'texto', 'header': 'Texto', 'width': 35},
+    {'key': 'order_number', 'header': 'Nº Pedido', 'width': 16},
+    {'key': 'cuenta_mayor', 'header': 'Cuenta Mayor', 'width': 14},
+]
 
 
 class ExcelGenerator:
     """Generate Excel files from extracted invoice data."""
 
     def __init__(self):
-        # Styles
         self.header_font = Font(bold=True, color='FFFFFF', name='Calibri', size=11)
-        self.header_fill = PatternFill('solid', start_color='0D9488')  # Turquoise
+        self.header_fill = PatternFill('solid', start_color='0D9488')
         self.header_alignment = Alignment(horizontal='center', vertical='center')
-
         self.data_font = Font(name='Calibri', size=10, color='000000')
         self.number_font = Font(name='Calibri', size=10, color='000000')
         self.account_font = Font(name='Calibri', size=10, bold=True, color='000000')
+        self.border = Border(bottom=Side(style='thin', color='E5E5E5'))
 
-        self.border = Border(
-            bottom=Side(style='thin', color='E5E5E5')
-        )
-
-        # Column configuration - now uses order_number (singular, one per row)
-        self.columns = [
-            {'key': 'sociedad', 'header': 'Sociedad', 'width': 10},
-            {'key': 'date', 'header': 'Fecha', 'width': 12},
-            {'key': 'company_name', 'header': 'Emisor', 'width': 30},
-            {'key': 'tax_id', 'header': 'CIF Emisor', 'width': 14},
-            {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
-            {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
-            {'key': 'order_number', 'header': 'Nº Pedido', 'width': 16},
-            {'key': 'concept', 'header': 'Concepto', 'width': 35},
-            {'key': 'currency', 'header': 'Divisa', 'width': 8},
-            {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
-            {'key': 'tax_rate', 'header': '%IVA', 'width': 8, 'format': '0"%"'},
-            {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00'},
-            {'key': 'total', 'header': 'Total', 'width': 14, 'format': '#,##0.00'},
-            {'key': 'accounting_account', 'header': 'Cuenta', 'width': 10},
-            {'key': 'accounting_description', 'header': 'Descripción Cuenta', 'width': 25},
-        ]
-
-    def create_workbook(self, data: List[Dict], output_path: str) -> str:
-        """Create a clean Excel workbook from invoice data."""
+    def create_workbook(self, data: List[Dict], output_path: str, con_pedido: bool = True) -> str:
+        """Create Excel workbook with format based on con_pedido flag."""
         wb = Workbook()
         ws = wb.active
-        ws.title = "Facturas"
+        ws.title = "Facturas con Pedido" if con_pedido else "Facturas sin Pedido"
+        columns = COLUMNS_CON_PEDIDO if con_pedido else COLUMNS_SIN_PEDIDO
 
         # Write headers
-        for col_idx, col_config in enumerate(self.columns, 1):
+        for col_idx, col_config in enumerate(columns, 1):
             cell = ws.cell(row=1, column=col_idx, value=col_config['header'])
             cell.font = self.header_font
             cell.fill = self.header_fill
             cell.alignment = self.header_alignment
             ws.column_dimensions[get_column_letter(col_idx)].width = col_config['width']
 
-        # Freeze header
         ws.freeze_panes = 'A2'
 
-        # Expand: each order number gets its own row
         rows = _expand_invoices(data)
 
-        # Write data
         current_row = 2
         for invoice in rows:
-            for col_idx, col_config in enumerate(self.columns, 1):
+            for col_idx, col_config in enumerate(columns, 1):
                 value = invoice.get(col_config['key'])
                 cell = ws.cell(row=current_row, column=col_idx)
 
-                if col_config['key'] == 'accounting_account':
-                    cell.value = value
+                if col_config['key'] in ('sociedad', 'cuenta_proveedor', 'cuenta_mayor'):
+                    cell.value = value if value else ''
                     cell.font = self.account_font
                     cell.alignment = Alignment(horizontal='center')
                 elif 'format' in col_config and value is not None:
@@ -159,98 +178,77 @@ class ExcelGenerator:
 
             current_row += 1
 
-        # Add totals row
+        # Totals
         last_row = current_row - 1
         if last_row > 1:
             total_row = last_row + 2
+            col_map = {col['header']: idx for idx, col in enumerate(columns, 1)}
 
-            # Find column indices dynamically
-            col_map = {col['key']: idx for idx, col in enumerate(self.columns, 1)}
+            # Total label
+            texto_col = col_map.get('Texto', len(columns) - 1)
+            ws.cell(row=total_row, column=texto_col, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Total label in Concepto column
-            concept_col = col_map.get('concept', 8)
-            ws.cell(row=total_row, column=concept_col, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
+            # Sum Base
+            for header in ('Base',):
+                if header in col_map:
+                    c = col_map[header]
+                    letter = get_column_letter(c)
+                    cell = ws.cell(row=total_row, column=c)
+                    cell.value = f'=SUM({letter}2:{letter}{last_row})'
+                    cell.number_format = '#,##0.00'
+                    cell.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Base total
-            base_col = col_map.get('base_amount', 10)
-            base_letter = get_column_letter(base_col)
-            total_base = ws.cell(row=total_row, column=base_col)
-            total_base.value = f'=SUM({base_letter}2:{base_letter}{last_row})'
-            total_base.number_format = '#,##0.00'
-            total_base.font = Font(bold=True, name='Calibri', size=11, color='000000')
+            # Sum IVA (only in con_pedido)
+            if 'IVA' in col_map:
+                c = col_map['IVA']
+                letter = get_column_letter(c)
+                cell = ws.cell(row=total_row, column=c)
+                cell.value = f'=SUM({letter}2:{letter}{last_row})'
+                cell.number_format = '#,##0.00'
+                cell.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # IVA total
-            iva_col = col_map.get('tax_amount', 12)
-            iva_letter = get_column_letter(iva_col)
-            total_iva = ws.cell(row=total_row, column=iva_col)
-            total_iva.value = f'=SUM({iva_letter}2:{iva_letter}{last_row})'
-            total_iva.number_format = '#,##0.00'
-            total_iva.font = Font(bold=True, name='Calibri', size=11, color='000000')
-
-            # Grand total
-            total_col = col_map.get('total', 13)
-            total_letter = get_column_letter(total_col)
-            total_cell = ws.cell(row=total_row, column=total_col)
-            total_cell.value = f'=SUM({total_letter}2:{total_letter}{last_row})'
-            total_cell.number_format = '#,##0.00'
-            total_cell.font = Font(bold=True, name='Calibri', size=12, color='000000')
+            # Sum Importe
+            if 'Importe' in col_map:
+                c = col_map['Importe']
+                letter = get_column_letter(c)
+                cell = ws.cell(row=total_row, column=c)
+                cell.value = f'=SUM({letter}2:{letter}{last_row})'
+                cell.number_format = '#,##0.00'
+                cell.font = Font(bold=True, name='Calibri', size=12, color='000000')
 
         wb.save(output_path)
         return output_path
 
-    def generate_from_invoices(self, invoices: List[Dict], output_dir: str, filename: str = "facturas.xlsx") -> str:
+    def generate_from_invoices(self, invoices: List[Dict], output_dir: str,
+                                filename: str = "facturas.xlsx", con_pedido: bool = True) -> str:
         """Generate Excel file from list of extracted invoices."""
         output_path = os.path.join(output_dir, filename)
-        return self.create_workbook(invoices, output_path)
+        return self.create_workbook(invoices, output_path, con_pedido=con_pedido)
 
 
 class SAPCSVGenerator:
     """Generate SAP-compatible CSV from extracted invoice data."""
 
-    # CSV columns for SAP import
-    SAP_COLUMNS = [
-        'Sociedad',         # Company code (Bukrs)
-        'Fecha',            # Posting date
-        'Nº Factura',       # Invoice number / reference
-        'Nº Pedido',        # Purchase order number
-        'CIF Emisor',       # Vendor tax ID (to match SAP vendor)
-        'Emisor',           # Vendor name
-        'CIF Receptor',     # Receiver tax ID
-        'Concepto',         # Description / text
-        'Divisa',           # Currency
-        'Base Imponible',   # Net amount
-        '% IVA',            # Tax rate
-        'Importe IVA',      # Tax amount
-        'Total',            # Gross amount
-        'Cuenta Gasto',     # Expense GL account
-    ]
-
-    def generate_csv(self, invoices: List[Dict], output_dir: str, filename: str = "facturas_sap.csv") -> str:
-        """Generate SAP-compatible CSV. Each order number gets its own row."""
+    def generate_csv(self, invoices: List[Dict], output_dir: str,
+                     filename: str = "facturas_sap.csv", con_pedido: bool = True) -> str:
+        """Generate SAP-compatible CSV. Format depends on con_pedido flag."""
         output_path = os.path.join(output_dir, filename)
         rows = _expand_invoices(invoices)
+        columns = COLUMNS_CON_PEDIDO if con_pedido else COLUMNS_SIN_PEDIDO
 
         with open(output_path, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f, delimiter=';', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(self.SAP_COLUMNS)
+            writer.writerow([col['header'] for col in columns])
 
             for inv in rows:
-                writer.writerow([
-                    inv.get('sociedad', ''),
-                    inv.get('date', ''),
-                    inv.get('invoice_number', ''),
-                    inv.get('order_number', ''),
-                    inv.get('tax_id', ''),
-                    inv.get('company_name', ''),
-                    inv.get('receiver_tax_id', ''),
-                    inv.get('concept', ''),
-                    inv.get('currency', 'EUR'),
-                    self._format_decimal(inv.get('base_amount')),
-                    self._format_decimal(inv.get('tax_rate')),
-                    self._format_decimal(inv.get('tax_amount')),
-                    self._format_decimal(inv.get('total')),
-                    inv.get('accounting_account', '629'),
-                ])
+                row_data = []
+                for col in columns:
+                    value = inv.get(col['key'], '')
+                    if 'format' in col and value is not None:
+                        row_data.append(self._format_decimal(value))
+                    else:
+                        row_data.append(value if value else '')
+                writer.writerow(row_data)
 
         return output_path
 

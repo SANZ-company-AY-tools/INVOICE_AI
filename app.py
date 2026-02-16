@@ -297,6 +297,7 @@ def sharepoint_download():
 
     data = request.get_json()
     file_ids = data.get('file_ids', [])
+    con_pedido = data.get('con_pedido', True)
 
     if not file_ids:
         return jsonify({'error': 'No files selected'}), 400
@@ -338,12 +339,12 @@ def sharepoint_download():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         excel_filename = f'facturas_{session_id}_{timestamp}.xlsx'
         excel_path = excel_gen.generate_from_invoices(
-            results, app.config['OUTPUT_FOLDER'], excel_filename
+            results, app.config['OUTPUT_FOLDER'], excel_filename, con_pedido=con_pedido
         )
 
         csv_filename = f'facturas_sap_{session_id}_{timestamp}.csv'
         csv_path = csv_gen.generate_csv(
-            results, app.config['OUTPUT_FOLDER'], csv_filename
+            results, app.config['OUTPUT_FOLDER'], csv_filename, con_pedido=con_pedido
         )
 
         response_data = {
@@ -354,7 +355,8 @@ def sharepoint_download():
             'excel_filename': excel_filename,
             'download_url': url_for('download_excel', filename=excel_filename),
             'csv_filename': csv_filename,
-            'csv_download_url': url_for('download_csv', filename=csv_filename)
+            'csv_download_url': url_for('download_csv', filename=csv_filename),
+            'con_pedido': con_pedido
         }
 
         for r in results:
@@ -394,6 +396,9 @@ def upload_files():
     if not uploaded_files:
         return jsonify({'error': 'No valid files uploaded. Allowed: PDF, PNG, JPG, JPEG, BMP, TIFF, GIF, DOCX'}), 400
 
+    # Check con_pedido flag from form
+    con_pedido = request.form.get('con_pedido', 'true') == 'true'
+
     # Process invoices
     try:
         results = extractor.process_multiple_files(uploaded_files)
@@ -404,7 +409,8 @@ def upload_files():
         excel_path = excel_gen.generate_from_invoices(
             results,
             app.config['OUTPUT_FOLDER'],
-            excel_filename
+            excel_filename,
+            con_pedido=con_pedido
         )
 
         # Generate SAP CSV
@@ -412,7 +418,8 @@ def upload_files():
         csv_path = csv_gen.generate_csv(
             results,
             app.config['OUTPUT_FOLDER'],
-            csv_filename
+            csv_filename,
+            con_pedido=con_pedido
         )
 
         # Prepare response data
@@ -424,7 +431,8 @@ def upload_files():
             'excel_filename': excel_filename,
             'download_url': url_for('download_excel', filename=excel_filename),
             'csv_filename': csv_filename,
-            'csv_download_url': url_for('download_csv', filename=csv_filename)
+            'csv_download_url': url_for('download_csv', filename=csv_filename),
+            'con_pedido': con_pedido
         }
 
         # Add preview of extracted data (include error messages)

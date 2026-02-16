@@ -469,6 +469,34 @@
             margin-top: 1.75rem;
         }
 
+        .invoice-type-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 1.25rem;
+            padding: 14px 18px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+        }
+        .invoice-type-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #0d9488;
+            cursor: pointer;
+        }
+        .invoice-type-toggle label {
+            font-size: 14px;
+            color: #1f2937;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .invoice-type-toggle .toggle-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-left: auto;
+        }
+
         /* Progress */
         .progress-section {
             display: none;
@@ -845,6 +873,12 @@
                 <p class="progress-status" id="progressStatus">Analizando documentos con IA...</p>
             </div>
 
+            <div class="invoice-type-toggle">
+                <input type="checkbox" id="conPedido" checked>
+                <label for="conPedido">Facturas con número de pedido</label>
+                <span class="toggle-hint" id="toggleHint">Formato MIRO (con pedido)</span>
+            </div>
+
             <div class="actions">
                 <button class="btn btn-sharepoint" id="sharepointBtn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -1037,6 +1071,7 @@
 
             const formData = new FormData();
             selectedFiles.forEach(file => formData.append('files', file));
+            formData.append('con_pedido', document.getElementById('conPedido').checked ? 'true' : 'false');
 
             let progress = 0;
             const progressInterval = setInterval(() => {
@@ -1155,6 +1190,13 @@
             resultsSection.classList.add('visible');
             processBtn.disabled = false;
         }
+
+        // Toggle hint for con pedido checkbox
+        const conPedidoCheckbox = document.getElementById('conPedido');
+        const toggleHint = document.getElementById('toggleHint');
+        conPedidoCheckbox.addEventListener('change', () => {
+            toggleHint.textContent = conPedidoCheckbox.checked ? 'Formato MIRO (con pedido)' : 'Formato FI (sin pedido)';
+        });
 
         // SharePoint integration
         const sharepointBtn = document.getElementById('sharepointBtn');
@@ -1381,7 +1423,7 @@
                 const response = await fetch('/sharepoint/download', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ file_ids: spSelectedFiles })
+                    body: JSON.stringify({ file_ids: spSelectedFiles, con_pedido: conPedidoCheckbox.checked })
                 });
 
                 clearInterval(progressInterval);
