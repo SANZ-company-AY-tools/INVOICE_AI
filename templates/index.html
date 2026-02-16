@@ -959,7 +959,7 @@
                     <td>${r.tax_id || '-'}</td>
                     <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
                     <td>${r.receiver_tax_id || '-'}</td>
-                    <td>${r.order_number || '-'}</td>
+                    <td>${Array.isArray(r.order_numbers) ? (r.order_numbers.length > 0 ? r.order_numbers.join(', ') : '-') : (r.order_numbers || r.order_number || '-')}</td>
                     <td>${r.date || '-'}</td>
                     <td class="concept" title="${r.concept || '-'}">${r.concept || '-'}</td>
                     <td class="amount">${currency}</td>

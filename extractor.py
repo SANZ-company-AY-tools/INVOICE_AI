@@ -42,7 +42,7 @@ Tu tarea es analizar la imagen de una factura y extraer los siguientes datos en 
 - receiver_name: Nombre del RECEPTOR/CLIENTE (a quien va dirigida la factura)
 - receiver_tax_id: NIF/CIF COMPLETO del RECEPTOR/CLIENTE. IMPORTANTE: Incluir TODOS los caracteres
 - invoice_number: Número de factura
-- order_number: Número de pedido (si aparece, sino null)
+- order_numbers: ARRAY de números de pedido. Una factura puede tener MÚLTIPLES pedidos. Devuelve un array JSON, ej: ["4600001234", "4600005678"] o [] si no hay pedidos
 - date: Fecha de emisión (formato YYYY-MM-DD)
 - concept: Concepto breve de la factura
 - period_start: Fecha inicio período si aplica (YYYY-MM-DD, null si no)
@@ -83,7 +83,7 @@ IMPORTANTE:
 - El emisor suele aparecer arriba con su logo, datos fiscales y "Factura emitida por"
 - El receptor/cliente suele aparecer como "Facturar a", "Cliente", "Datos del cliente"
 - NUNCA pongas el CIF del cliente/receptor en tax_id
-- order_number: Busca referencias como "P.O.", "Pedido N", "Pedido C", "Pedido", "N Pedido", "Nº Pedido". Suelen empezar por 46. Si NO encuentras número de pedido, pon null (no fuerces)
+- order_numbers: Busca TODOS los números de pedido en la factura. Referencias: "P.O.", "Pedido N", "Pedido C", "Pedido", "N Pedido", "Nº Pedido", "Order", "PO Number". Suelen empezar por 46. Devuelve un ARRAY con todos los encontrados. Si no hay pedidos, devuelve array vacío []
 - currency: Detecta la divisa por símbolos (€, $, R$, £) o códigos. Usa códigos ISO: EUR, USD, BRL, GBP, MXN, CLP, ARS, etc.
 - Sugiere la cuenta contable más apropiada según el concepto
 - Si no puedes determinar la cuenta, usa "629" (Otros servicios)
@@ -258,6 +258,15 @@ IMPORTANTE:
             extracted = self._call_claude_vision(images_data)
 
             # Build result with standard fields
+            # Handle order_numbers - can be array or single value for backwards compatibility
+            order_nums = extracted.get('order_numbers') or extracted.get('order_number')
+            if order_nums is None:
+                order_numbers = []
+            elif isinstance(order_nums, list):
+                order_numbers = order_nums
+            else:
+                order_numbers = [order_nums] if order_nums else []
+
             result = {
                 'file_name': os.path.basename(file_path),
                 'company_name': extracted.get('company_name'),
@@ -265,7 +274,7 @@ IMPORTANTE:
                 'receiver_name': extracted.get('receiver_name'),
                 'receiver_tax_id': extracted.get('receiver_tax_id'),
                 'invoice_number': extracted.get('invoice_number'),
-                'order_number': extracted.get('order_number'),
+                'order_numbers': order_numbers,
                 'date': extracted.get('date'),
                 'concept': extracted.get('concept'),
                 'period_start': extracted.get('period_start'),

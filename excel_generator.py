@@ -34,7 +34,7 @@ class ExcelGenerator:
             {'key': 'tax_id', 'header': 'CIF Emisor', 'width': 14},
             {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
             {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
-            {'key': 'order_number', 'header': 'Nº Pedido', 'width': 14},
+            {'key': 'order_numbers', 'header': 'Nº Pedido', 'width': 20},
             {'key': 'concept', 'header': 'Concepto', 'width': 35},
             {'key': 'currency', 'header': 'Divisa', 'width': 8},
             {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
@@ -72,7 +72,14 @@ class ExcelGenerator:
                 value = invoice.get(col_config['key'])
                 cell = ws.cell(row=current_row, column=col_idx)
 
-                if col_config['key'] == 'accounting_account':
+                # Handle order_numbers array - join with comma
+                if col_config['key'] == 'order_numbers':
+                    if isinstance(value, list):
+                        cell.value = ', '.join(str(v) for v in value if v) if value else ''
+                    else:
+                        cell.value = value if value else ''
+                    cell.font = self.data_font
+                elif col_config['key'] == 'accounting_account':
                     cell.value = value
                     cell.font = self.account_font
                     cell.alignment = Alignment(horizontal='center')
