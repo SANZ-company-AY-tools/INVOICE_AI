@@ -924,8 +924,6 @@
                 </div>
             </div>
 
-            <div class="stats-grid" id="statsGrid"></div>
-
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -969,7 +967,6 @@
         const resultsSection = document.getElementById('resultsSection');
         const resultsBody = document.getElementById('resultsBody');
         const downloadBtn = document.getElementById('downloadBtn');
-        const statsGrid = document.getElementById('statsGrid');
         const errorAlert = document.getElementById('errorAlert');
         const errorText = document.getElementById('errorText');
 
@@ -1115,30 +1112,6 @@
         });
 
         function displayResults(data) {
-            const successful = data.results.filter(r => r.status === 'success').length;
-            const totalAmount = data.results.reduce((sum, r) => sum + (r.total || 0), 0);
-
-            const totalIva = data.results.reduce((sum, r) => sum + (r.tax_amount || 0), 0);
-
-            statsGrid.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-value primary">${data.files_processed}</div>
-                    <div class="stat-label">Facturas procesadas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value primary">${successful}</div>
-                    <div class="stat-label">Extracciones exitosas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value primary">${formatCurrency(totalIva)}</div>
-                    <div class="stat-label">IVA Soportado</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value primary">${formatCurrency(totalAmount)}</div>
-                    <div class="stat-label">Total facturado</div>
-                </div>
-            `;
-
             // Expand results: each order_number × tax_line = separate row
             const expandedRows = [];
             data.results.forEach(r => {
