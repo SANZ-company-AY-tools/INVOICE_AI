@@ -472,29 +472,82 @@
         .invoice-type-toggle {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             margin-top: 1.25rem;
-            padding: 14px 18px;
-            background: #f0fdf4;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
             border: 1px solid #bbf7d0;
-            border-radius: 10px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .invoice-type-toggle:hover {
+            border-color: #6ee7b7;
+            box-shadow: 0 2px 8px rgba(13, 148, 136, 0.08);
+        }
+        .invoice-type-toggle.sin-pedido {
+            background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
+            border-color: #bfdbfe;
+        }
+        .invoice-type-toggle.sin-pedido:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
         }
         .invoice-type-toggle input[type="checkbox"] {
+            display: none;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            background: #cbd5e1;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
             width: 20px;
             height: 20px;
-            accent-color: #0d9488;
-            cursor: pointer;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .invoice-type-toggle input[type="checkbox"]:checked + .toggle-switch {
+            background: #0d9488;
+        }
+        .invoice-type-toggle input[type="checkbox"]:checked + .toggle-switch::after {
+            transform: translateX(22px);
+        }
+        .invoice-type-toggle .sin-pedido .toggle-switch {
+            background: #3b82f6;
         }
         .invoice-type-toggle label {
             font-size: 14px;
             color: #1f2937;
             cursor: pointer;
             font-weight: 500;
+            user-select: none;
         }
         .invoice-type-toggle .toggle-hint {
             font-size: 12px;
-            color: #6b7280;
             margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .invoice-type-toggle .toggle-hint.miro {
+            background: #ccfbf1;
+            color: #0f766e;
+        }
+        .invoice-type-toggle .toggle-hint.fi {
+            background: #dbeafe;
+            color: #1d4ed8;
         }
 
         /* Progress */
@@ -873,10 +926,11 @@
                 <p class="progress-status" id="progressStatus">Analizando documentos con IA...</p>
             </div>
 
-            <div class="invoice-type-toggle">
+            <div class="invoice-type-toggle" id="toggleContainer">
                 <input type="checkbox" id="conPedido" checked>
+                <div class="toggle-switch" onclick="document.getElementById('conPedido').click()"></div>
                 <label for="conPedido">Facturas con número de pedido</label>
-                <span class="toggle-hint" id="toggleHint">Formato MIRO (con pedido)</span>
+                <span class="toggle-hint miro" id="toggleHint">Formato MIRO</span>
             </div>
 
             <div class="actions">
@@ -1210,8 +1264,17 @@
         // Toggle hint for con pedido checkbox
         const conPedidoCheckbox = document.getElementById('conPedido');
         const toggleHint = document.getElementById('toggleHint');
+        const toggleContainer = document.getElementById('toggleContainer');
         conPedidoCheckbox.addEventListener('change', () => {
-            toggleHint.textContent = conPedidoCheckbox.checked ? 'Formato MIRO (con pedido)' : 'Formato FI (sin pedido)';
+            if (conPedidoCheckbox.checked) {
+                toggleHint.textContent = 'Formato MIRO';
+                toggleHint.className = 'toggle-hint miro';
+                toggleContainer.classList.remove('sin-pedido');
+            } else {
+                toggleHint.textContent = 'Formato FI';
+                toggleHint.className = 'toggle-hint fi';
+                toggleContainer.classList.add('sin-pedido');
+            }
         });
 
         // SharePoint integration
