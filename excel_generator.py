@@ -11,6 +11,28 @@ from openpyxl.utils import get_column_letter
 import os
 
 
+# Mapping receptor name → SAP company code (Sociedad)
+SOCIEDAD_MAP = {
+    'ambar eco': 'AE0',
+    'ambar plus': 'AP0',
+    'ambar hodnakin': 'AH0',
+    'ambar remasur': 'AR0',
+    'pepe nuñez': 'AB0',
+    'pepe nunez': 'AB0',
+}
+
+
+def _get_sociedad(receiver_name: str) -> str:
+    """Match receiver name to SAP company code."""
+    if not receiver_name:
+        return ''
+    name_lower = receiver_name.lower().strip()
+    for key, code in SOCIEDAD_MAP.items():
+        if key in name_lower:
+            return code
+    return ''
+
+
 def _expand_invoices(data: List[Dict]) -> List[Dict]:
     """Expand invoices so each combination of order number + tax line gets its own row.
 
@@ -40,6 +62,9 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
                 'tax_amount': invoice.get('tax_amount'),
             }]
 
+        # Determine sociedad from receiver name
+        sociedad = _get_sociedad(invoice.get('receiver_name', ''))
+
         # Create one row per order_number × tax_line combination
         for on in order_nums:
             for tl in tax_lines:
@@ -48,6 +73,7 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
                 row['base_amount'] = tl.get('base_amount')
                 row['tax_rate'] = tl.get('tax_rate')
                 row['tax_amount'] = tl.get('tax_amount')
+                row['sociedad'] = sociedad
                 expanded.append(row)
 
     return expanded
@@ -72,6 +98,7 @@ class ExcelGenerator:
 
         # Column configuration - now uses order_number (singular, one per row)
         self.columns = [
+            {'key': 'sociedad', 'header': 'Sociedad', 'width': 10},
             {'key': 'date', 'header': 'Fecha', 'width': 12},
             {'key': 'company_name', 'header': 'Emisor', 'width': 30},
             {'key': 'tax_id', 'header': 'CIF Emisor', 'width': 14},
@@ -137,24 +164,34 @@ class ExcelGenerator:
         if last_row > 1:
             total_row = last_row + 2
 
-            # Total label (column G = 7 = Concepto)
-            ws.cell(row=total_row, column=7, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
+            # Find column indices dynamically
+            col_map = {col['key']: idx for idx, col in enumerate(self.columns, 1)}
 
-            # Base total (column I = 9)
-            total_base = ws.cell(row=total_row, column=9)
-            total_base.value = f'=SUM(I2:I{last_row})'
+            # Total label in Concepto column
+            concept_col = col_map.get('concept', 8)
+            ws.cell(row=total_row, column=concept_col, value="TOTAL").font = Font(bold=True, name='Calibri', size=11, color='000000')
+
+            # Base total
+            base_col = col_map.get('base_amount', 10)
+            base_letter = get_column_letter(base_col)
+            total_base = ws.cell(row=total_row, column=base_col)
+            total_base.value = f'=SUM({base_letter}2:{base_letter}{last_row})'
             total_base.number_format = '#,##0.00'
             total_base.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # IVA total (column K = 11)
-            total_iva = ws.cell(row=total_row, column=11)
-            total_iva.value = f'=SUM(K2:K{last_row})'
+            # IVA total
+            iva_col = col_map.get('tax_amount', 12)
+            iva_letter = get_column_letter(iva_col)
+            total_iva = ws.cell(row=total_row, column=iva_col)
+            total_iva.value = f'=SUM({iva_letter}2:{iva_letter}{last_row})'
             total_iva.number_format = '#,##0.00'
             total_iva.font = Font(bold=True, name='Calibri', size=11, color='000000')
 
-            # Grand total (column L = 12)
-            total_cell = ws.cell(row=total_row, column=12)
-            total_cell.value = f'=SUM(L2:L{last_row})'
+            # Grand total
+            total_col = col_map.get('total', 13)
+            total_letter = get_column_letter(total_col)
+            total_cell = ws.cell(row=total_row, column=total_col)
+            total_cell.value = f'=SUM({total_letter}2:{total_letter}{last_row})'
             total_cell.number_format = '#,##0.00'
             total_cell.font = Font(bold=True, name='Calibri', size=12, color='000000')
 
@@ -172,6 +209,7 @@ class SAPCSVGenerator:
 
     # CSV columns for SAP import
     SAP_COLUMNS = [
+        'Sociedad',         # Company code (Bukrs)
         'Fecha',            # Posting date
         'Nº Factura',       # Invoice number / reference
         'Nº Pedido',        # Purchase order number
@@ -198,6 +236,7 @@ class SAPCSVGenerator:
 
             for inv in rows:
                 writer.writerow([
+                    inv.get('sociedad', ''),
                     inv.get('date', ''),
                     inv.get('invoice_number', ''),
                     inv.get('order_number', ''),

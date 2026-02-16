@@ -893,6 +893,7 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>Sociedad</th>
                             <th>Emisor</th>
                             <th>CIF Emisor</th>
                             <th>Receptor</th>
@@ -993,6 +994,24 @@
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        const SOCIEDAD_MAP = {
+            'ambar eco': 'AE0',
+            'ambar plus': 'AP0',
+            'ambar hodnakin': 'AH0',
+            'ambar remasur': 'AR0',
+            'pepe nuñez': 'AB0',
+            'pepe nunez': 'AB0',
+        };
+
+        function getSociedad(receiverName) {
+            if (!receiverName) return '';
+            const name = receiverName.toLowerCase();
+            for (const [key, code] of Object.entries(SOCIEDAD_MAP)) {
+                if (name.includes(key)) return code;
+            }
+            return '';
         }
 
         function formatCurrency(value, currency = 'EUR') {
@@ -1104,6 +1123,7 @@
                 const currency = r.currency || 'EUR';
                 return `
                 <tr>
+                    <td><strong>${getSociedad(r.receiver_name)}</strong></td>
                     <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
                     <td>${r.tax_id || '-'}</td>
                     <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
