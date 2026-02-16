@@ -38,6 +38,23 @@ def _get_sociedad(receiver_name: str) -> str:
     return ''
 
 
+def _get_codigo_iva(tax_rate) -> str:
+    """Map tax rate percentage to SAP IVA code."""
+    try:
+        rate = float(tax_rate)
+    except (ValueError, TypeError):
+        return ''
+    if rate == 0:
+        return 'S4'
+    elif rate == 4:
+        return 'S1'
+    elif rate == 10:
+        return 'S2'
+    elif rate == 21:
+        return 'S3'
+    return ''
+
+
 def _format_date_ddmmyyyy(date_str: str) -> str:
     """Convert date string to DD/MM/YYYY format."""
     if not date_str:
@@ -91,6 +108,7 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
                 row['base_amount'] = tl.get('base_amount')
                 row['tax_rate'] = tl.get('tax_rate')
                 row['tax_amount'] = tl.get('tax_amount')
+                row['codigo_iva'] = _get_codigo_iva(tl.get('tax_rate'))
                 row['sociedad'] = sociedad
                 row['fecha_contab'] = today
                 row['texto'] = texto
@@ -133,11 +151,11 @@ COLUMNS_SIN_PEDIDO = [
     {'key': 'tax_id', 'header': 'CIF Proveedor', 'width': 14},
     {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
     {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
+    {'key': 'cuenta_mayor', 'header': 'Cuenta Mayor', 'width': 14},
     {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
-    {'key': 'tax_rate', 'header': 'Código IVA', 'width': 10},
+    {'key': 'codigo_iva', 'header': 'Código IVA', 'width': 10},
     {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
     {'key': 'texto', 'header': 'Texto', 'width': 35},
-    {'key': 'cuenta_mayor', 'header': 'Cuenta Mayor', 'width': 14},
 ]
 
 
