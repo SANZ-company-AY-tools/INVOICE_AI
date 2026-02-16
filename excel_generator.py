@@ -13,14 +13,17 @@ from openpyxl.utils import get_column_letter
 import os
 
 
-# Mapping receptor name → SAP company code (Sociedad)
+# Mapping receptor name keywords → SAP company code (Sociedad)
+# Matches ANY name containing the keyword (e.g. "hondakin" matches "Ambar Hondakin SL")
 SOCIEDAD_MAP = {
-    'ambar eco': 'AE0',
-    'ambar plus': 'AP0',
-    'ambar hodnakin': 'AH0',
-    'ambar remasur': 'AR0',
-    'pepe nuñez': 'AB0',
-    'pepe nunez': 'AB0',
+    'eco': 'AE0',
+    'plus': 'AP0',
+    'hondakin': 'AH0',
+    'hodnakin': 'AH0',
+    'remasur': 'AR0',
+    'pepe': 'AB0',
+    'nuñez': 'AB0',
+    'nunez': 'AB0',
 }
 
 
@@ -105,7 +108,6 @@ COLUMNS_CON_PEDIDO = [
 
 # SIN PEDIDO (FI)
 COLUMNS_SIN_PEDIDO = [
-    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
     {'key': 'date', 'header': 'Fecha Factura', 'width': 14},
     {'key': 'fecha_contab', 'header': 'Fecha Contab.', 'width': 14},
     {'key': 'invoice_number', 'header': 'Referencia', 'width': 16},
@@ -119,7 +121,6 @@ COLUMNS_SIN_PEDIDO = [
     {'key': 'tax_rate', 'header': 'Código IVA', 'width': 10},
     {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
     {'key': 'texto', 'header': 'Texto', 'width': 35},
-    {'key': 'order_number', 'header': 'Nº Pedido', 'width': 16},
     {'key': 'cuenta_mayor', 'header': 'Cuenta Mayor', 'width': 14},
 ]
 
