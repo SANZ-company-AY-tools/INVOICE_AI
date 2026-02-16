@@ -38,9 +38,9 @@ class InvoiceExtractor:
 Tu tarea es analizar la imagen de una factura y extraer los siguientes datos en formato JSON:
 
 - company_name: Nombre de la empresa EMISORA (quien emite/vende, NO el cliente)
-- tax_id: NIF/CIF del EMISOR (NO del cliente/receptor)
+- tax_id: NIF/CIF COMPLETO del EMISOR (NO del cliente/receptor). IMPORTANTE: Debe incluir TODOS los caracteres (letra inicial + 8 dígitos, o 8 dígitos + letra final). Ejemplo: B12345678, 12345678A, A58818501
 - receiver_name: Nombre del RECEPTOR/CLIENTE (a quien va dirigida la factura)
-- receiver_tax_id: NIF/CIF del RECEPTOR/CLIENTE
+- receiver_tax_id: NIF/CIF COMPLETO del RECEPTOR/CLIENTE. IMPORTANTE: Incluir TODOS los caracteres
 - invoice_number: Número de factura
 - order_number: Número de pedido (si aparece, sino null)
 - date: Fecha de emisión (formato YYYY-MM-DD)
@@ -74,6 +74,11 @@ CUENTAS CONTABLES COMUNES (PGC España):
 
 IMPORTANTE:
 - Responde SOLO con el JSON, sin texto adicional ni markdown
+- tax_id y receiver_tax_id: Deben ser CIF/NIF COMPLETOS con TODOS sus caracteres
+  * CIF empresas: 1 letra + 7 dígitos + 1 dígito/letra (ej: B12345678, A58818501)
+  * NIF personas: 8 dígitos + 1 letra (ej: 12345678A)
+  * NIE extranjeros: X/Y/Z + 7 dígitos + 1 letra (ej: X1234567A)
+  * Si ves un CIF/NIF parcial, intenta leer TODOS los caracteres de la imagen
 - tax_id: SOLO el CIF/NIF del EMISOR (quien factura). Si no puedes distinguirlo del receptor con certeza, pon "REVISAR"
 - El emisor suele aparecer arriba con su logo, datos fiscales y "Factura emitida por"
 - El receptor/cliente suele aparecer como "Facturar a", "Cliente", "Datos del cliente"
