@@ -42,16 +42,19 @@ Tu tarea es analizar la imagen de una factura y extraer los siguientes datos en 
 - receiver_name: Nombre del RECEPTOR/CLIENTE (a quien va dirigida la factura)
 - receiver_tax_id: NIF/CIF COMPLETO del RECEPTOR/CLIENTE. IMPORTANTE: Incluir TODOS los caracteres
 - invoice_number: Número de factura
-- order_numbers: ARRAY de números de pedido. Una factura puede tener MÚLTIPLES pedidos. Devuelve un array JSON, ej: ["4600001234", "4600005678"] o [] si no hay pedidos
+- order_numbers: ARRAY de números de pedido (SIEMPRE empiezan por 46). Una factura puede tener MÚLTIPLES pedidos. Devuelve un array JSON, ej: ["4600001234", "4600005678"] o [] si no hay pedidos
 - date: Fecha de emisión (formato YYYY-MM-DD)
 - concept: Concepto breve de la factura
 - period_start: Fecha inicio período si aplica (YYYY-MM-DD, null si no)
 - period_end: Fecha fin período si aplica (YYYY-MM-DD, null si no)
 - currency: Código ISO de la divisa (EUR, USD, BRL, GBP, MXN, etc.)
-- base_amount: Base imponible (número decimal)
-- tax_rate: Porcentaje IVA/impuesto (número, ej: 21)
-- tax_amount: Importe IVA/impuesto (número decimal)
-- total: Total factura (número decimal)
+- tax_lines: ARRAY de líneas de IVA. Cada factura puede tener MÚLTIPLES tipos de IVA. Cada elemento es un objeto con:
+  * base_amount: Base imponible de esta línea (número decimal)
+  * tax_rate: Porcentaje IVA/impuesto (número, ej: 21)
+  * tax_amount: Importe IVA de esta línea (número decimal)
+  Ejemplo: [{"base_amount": 1000.00, "tax_rate": 21, "tax_amount": 210.00}, {"base_amount": 500.00, "tax_rate": 10, "tax_amount": 50.00}]
+  Si solo hay UN tipo de IVA, devuelve un array con un solo elemento.
+- total: Total factura (número decimal, suma de todas las bases + todos los IVAs)
 - accounting_account: Cuenta contable sugerida del PGC español (solo número, ej: "629")
 - accounting_description: Descripción breve de la cuenta (ej: "Otros servicios")
 
@@ -83,7 +86,7 @@ IMPORTANTE:
 - El emisor suele aparecer arriba con su logo, datos fiscales y "Factura emitida por"
 - El receptor/cliente suele aparecer como "Facturar a", "Cliente", "Datos del cliente"
 - NUNCA pongas el CIF del cliente/receptor en tax_id
-- order_numbers: Busca TODOS los números de pedido en la factura. Referencias: "P.O.", "Pedido N", "Pedido C", "Pedido", "N Pedido", "Nº Pedido", "Order", "PO Number". Suelen empezar por 46. Devuelve un ARRAY con todos los encontrados. Si no hay pedidos, devuelve array vacío []
+- order_numbers: Busca TODOS los números de pedido en la factura. Los números de pedido SIEMPRE empiezan por "46" (ej: 4600012345, 4600078901). Referencias: "P.O.", "Pedido N", "Pedido C", "Pedido", "N Pedido", "Nº Pedido", "Order", "PO Number". Solo incluye números que empiecen por 46. Devuelve un ARRAY con todos los encontrados. Si no hay pedidos, devuelve array vacío []
 - currency: Detecta la divisa por símbolos (€, $, R$, £) o códigos. Usa códigos ISO: EUR, USD, BRL, GBP, MXN, CLP, ARS, etc.
 - Sugiere la cuenta contable más apropiada según el concepto
 - Si no puedes determinar la cuenta, usa "629" (Otros servicios)
@@ -267,6 +270,22 @@ IMPORTANTE:
             else:
                 order_numbers = [order_nums] if order_nums else []
 
+            # Handle tax_lines - can be array or legacy single values
+            tax_lines = extracted.get('tax_lines')
+            if not tax_lines or not isinstance(tax_lines, list):
+                # Backwards compatibility: build single tax line from old fields
+                tax_lines = [{
+                    'base_amount': self._parse_number(extracted.get('base_amount')),
+                    'tax_rate': self._parse_number(extracted.get('tax_rate')),
+                    'tax_amount': self._parse_number(extracted.get('tax_amount')),
+                }]
+            else:
+                tax_lines = [{
+                    'base_amount': self._parse_number(tl.get('base_amount')),
+                    'tax_rate': self._parse_number(tl.get('tax_rate')),
+                    'tax_amount': self._parse_number(tl.get('tax_amount')),
+                } for tl in tax_lines]
+
             result = {
                 'file_name': os.path.basename(file_path),
                 'company_name': extracted.get('company_name'),
@@ -280,9 +299,7 @@ IMPORTANTE:
                 'period_start': extracted.get('period_start'),
                 'period_end': extracted.get('period_end'),
                 'currency': extracted.get('currency', 'EUR'),
-                'base_amount': self._parse_number(extracted.get('base_amount')),
-                'tax_rate': self._parse_number(extracted.get('tax_rate')),
-                'tax_amount': self._parse_number(extracted.get('tax_amount')),
+                'tax_lines': tax_lines,
                 'total': self._parse_number(extracted.get('total')),
                 'accounting_account': extracted.get('accounting_account', '629'),
                 'accounting_description': extracted.get('accounting_description', 'Otros servicios'),

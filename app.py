@@ -14,7 +14,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from extractor import InvoiceExtractor
-from excel_generator import ExcelGenerator
+from excel_generator import ExcelGenerator, SAPCSVGenerator
 
 app = Flask(__name__)
 
@@ -47,6 +47,7 @@ os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 # Initialize extractors
 extractor = InvoiceExtractor()
 excel_gen = ExcelGenerator()
+csv_gen = SAPCSVGenerator()
 
 
 def get_msal_app():
@@ -340,13 +341,20 @@ def sharepoint_download():
             results, app.config['OUTPUT_FOLDER'], excel_filename
         )
 
+        csv_filename = f'facturas_sap_{session_id}_{timestamp}.csv'
+        csv_path = csv_gen.generate_csv(
+            results, app.config['OUTPUT_FOLDER'], csv_filename
+        )
+
         response_data = {
             'success': True,
             'session_id': session_id,
             'files_processed': len(downloaded),
             'results': [],
             'excel_filename': excel_filename,
-            'download_url': url_for('download_excel', filename=excel_filename)
+            'download_url': url_for('download_excel', filename=excel_filename),
+            'csv_filename': csv_filename,
+            'csv_download_url': url_for('download_csv', filename=csv_filename)
         }
 
         for r in results:
@@ -399,6 +407,14 @@ def upload_files():
             excel_filename
         )
 
+        # Generate SAP CSV
+        csv_filename = f'facturas_sap_{session_id}_{timestamp}.csv'
+        csv_path = csv_gen.generate_csv(
+            results,
+            app.config['OUTPUT_FOLDER'],
+            csv_filename
+        )
+
         # Prepare response data
         response_data = {
             'success': True,
@@ -406,7 +422,9 @@ def upload_files():
             'files_processed': len(uploaded_files),
             'results': [],
             'excel_filename': excel_filename,
-            'download_url': url_for('download_excel', filename=excel_filename)
+            'download_url': url_for('download_excel', filename=excel_filename),
+            'csv_filename': csv_filename,
+            'csv_download_url': url_for('download_csv', filename=csv_filename)
         }
 
         # Add preview of extracted data (include error messages)
@@ -421,6 +439,21 @@ def upload_files():
 
     except Exception as e:
         return jsonify({'error': f'Processing error: {str(e)}'}), 500
+
+
+@app.route('/download/csv/<filename>')
+@login_required
+def download_csv(filename: str):
+    """Download generated SAP CSV file."""
+    filepath = os.path.join(app.config['OUTPUT_FOLDER'], secure_filename(filename))
+    if os.path.exists(filepath):
+        return send_file(
+            filepath,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=filename
+        )
+    return jsonify({'error': 'File not found'}), 404
 
 
 @app.route('/download/<filename>')

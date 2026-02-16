@@ -871,12 +871,20 @@
         <div class="card results-section" id="resultsSection">
             <div class="results-header">
                 <h2 class="results-title">Resultados del análisis</h2>
-                <a class="btn btn-success" id="downloadBtn" href="#" download>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Descargar Excel
-                </a>
+                <div style="display:flex;gap:10px;">
+                    <a class="btn btn-success" id="downloadBtn" href="#" download>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Descargar Excel
+                    </a>
+                    <a class="btn btn-sharepoint" id="downloadCsvBtn" href="#" download>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        CSV para SAP
+                    </a>
+                </div>
             </div>
 
             <div class="stats-grid" id="statsGrid"></div>
@@ -1072,7 +1080,23 @@
                 </div>
             `;
 
-            resultsBody.innerHTML = data.results.map(r => {
+            // Expand results: each order_number × tax_line = separate row
+            const expandedRows = [];
+            data.results.forEach(r => {
+                if (r.status !== 'success') {
+                    expandedRows.push(r);
+                    return;
+                }
+                const orders = Array.isArray(r.order_numbers) && r.order_numbers.length > 0 ? r.order_numbers : [''];
+                const taxLines = Array.isArray(r.tax_lines) && r.tax_lines.length > 0 ? r.tax_lines : [{base_amount: r.base_amount, tax_rate: r.tax_rate, tax_amount: r.tax_amount}];
+                orders.forEach(on => {
+                    taxLines.forEach(tl => {
+                        expandedRows.push({...r, order_number: on, base_amount: tl.base_amount, tax_rate: tl.tax_rate, tax_amount: tl.tax_amount});
+                    });
+                });
+            });
+
+            resultsBody.innerHTML = expandedRows.map(r => {
                 const account = r.accounting_account
                     ? `${r.accounting_account} - ${r.accounting_description || ''}`
                     : '-';
@@ -1084,7 +1108,7 @@
                     <td>${r.tax_id || '-'}</td>
                     <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
                     <td>${r.receiver_tax_id || '-'}</td>
-                    <td>${Array.isArray(r.order_numbers) ? (r.order_numbers.length > 0 ? r.order_numbers.join(', ') : '-') : (r.order_numbers || r.order_number || '-')}</td>
+                    <td>${r.order_number || '-'}</td>
                     <td>${r.date || '-'}</td>
                     <td class="concept" title="${r.concept || '-'}">${r.concept || '-'}</td>
                     <td class="amount">${currency}</td>
@@ -1104,6 +1128,7 @@
             `}).join('');
 
             downloadBtn.href = data.download_url;
+            document.getElementById('downloadCsvBtn').href = data.csv_download_url;
             resultsSection.classList.add('visible');
             processBtn.disabled = false;
         }
