@@ -1124,29 +1124,28 @@
             if (conPedido) {
                 // CON PEDIDO headers
                 resultsHead.innerHTML = `<tr>
-                    <th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
-                    <th>Nombre Proveedor</th><th>CIF Proveedor</th><th>Cuenta Proveedor</th>
-                    <th>Receptor</th><th>CIF Receptor</th><th>Cód. Empresa</th>
-                    <th>Base</th><th>% IVA</th><th>IVA</th><th>Importe</th>
-                    <th>Texto</th><th>Nº Pedido</th><th>Estado</th>
+                    <th>Cod. Empresa</th><th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
+                    <th>Cuenta Proveedor</th><th>Nombre Proveedor</th><th>CIF Proveedor</th>
+                    <th>Receptor</th><th>CIF Receptor</th>
+                    <th>Base</th><th>% IVA</th><th>Importe</th>
+                    <th>Texto</th><th>Numero Pedido</th><th>Estado</th>
                 </tr>`;
 
                 resultsBody.innerHTML = expandedRows.map(r => {
                     const currency = r.currency || 'EUR';
                     const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? `${r.tax_rate}%` : '-';
                     return `<tr>
+                        <td><strong>${getSociedad(r.receiver_name)}</strong></td>
                         <td>${r.date || '-'}</td>
                         <td>${today}</td>
                         <td>${r.invoice_number || '-'}</td>
+                        <td></td>
                         <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
                         <td>${r.tax_id || '-'}</td>
-                        <td></td>
                         <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
                         <td>${r.receiver_tax_id || '-'}</td>
-                        <td><strong>${getSociedad(r.receiver_name)}</strong></td>
                         <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
                         <td class="amount">${taxRate}</td>
-                        <td class="amount">${formatCurrency(r.tax_amount, currency)}</td>
                         <td class="amount">${formatCurrency(r.total, currency)}</td>
                         <td class="concept" title="${getTexto(r)}">${getTexto(r)}</td>
                         <td>${r.order_number || '-'}</td>
@@ -1158,9 +1157,9 @@
             } else {
                 // SIN PEDIDO headers
                 resultsHead.innerHTML = `<tr>
-                    <th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
-                    <th>Nombre Proveedor</th><th>CIF Proveedor</th><th>Cuenta Proveedor</th>
-                    <th>Receptor</th><th>CIF Receptor</th><th>Cód. Empresa</th>
+                    <th>Cod. Empresa</th><th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
+                    <th>Cuenta Proveedor</th><th>Nombre Proveedor</th><th>CIF Proveedor</th>
+                    <th>Receptor</th><th>CIF Receptor</th>
                     <th>Base</th><th>Código IVA</th><th>Importe</th>
                     <th>Texto</th><th>Cuenta Mayor</th><th>Estado</th>
                 </tr>`;
@@ -1169,15 +1168,15 @@
                     const currency = r.currency || 'EUR';
                     const codigoIva = r.tax_rate !== null && r.tax_rate !== undefined ? r.tax_rate : '-';
                     return `<tr>
+                        <td><strong>${getSociedad(r.receiver_name)}</strong></td>
                         <td>${r.date || '-'}</td>
                         <td>${today}</td>
                         <td>${r.invoice_number || '-'}</td>
+                        <td></td>
                         <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
                         <td>${r.tax_id || '-'}</td>
-                        <td></td>
                         <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
                         <td>${r.receiver_tax_id || '-'}</td>
-                        <td><strong>${getSociedad(r.receiver_name)}</strong></td>
                         <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
                         <td class="amount">${codigoIva}</td>
                         <td class="amount">${formatCurrency(r.total, currency)}</td>

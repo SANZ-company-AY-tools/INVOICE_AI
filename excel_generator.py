@@ -89,34 +89,33 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
 
 # CON PEDIDO (MIRO)
 COLUMNS_CON_PEDIDO = [
+    {'key': 'sociedad', 'header': 'Cod. Empresa', 'width': 12},
     {'key': 'date', 'header': 'Fecha Factura', 'width': 14},
     {'key': 'fecha_contab', 'header': 'Fecha Contab.', 'width': 14},
     {'key': 'invoice_number', 'header': 'Referencia', 'width': 16},
+    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
     {'key': 'company_name', 'header': 'Nombre Proveedor', 'width': 30},
     {'key': 'tax_id', 'header': 'CIF Proveedor', 'width': 14},
-    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
     {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
     {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
-    {'key': 'sociedad', 'header': 'Cód. Empresa', 'width': 12},
     {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
     {'key': 'tax_rate', 'header': '% IVA', 'width': 8, 'format': '0"%"'},
-    {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00'},
     {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
     {'key': 'texto', 'header': 'Texto', 'width': 35},
-    {'key': 'order_number', 'header': 'Nº Pedido', 'width': 16},
+    {'key': 'order_number', 'header': 'Numero Pedido', 'width': 16},
 ]
 
 # SIN PEDIDO (FI)
 COLUMNS_SIN_PEDIDO = [
+    {'key': 'sociedad', 'header': 'Cod. Empresa', 'width': 12},
     {'key': 'date', 'header': 'Fecha Factura', 'width': 14},
     {'key': 'fecha_contab', 'header': 'Fecha Contab.', 'width': 14},
     {'key': 'invoice_number', 'header': 'Referencia', 'width': 16},
+    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
     {'key': 'company_name', 'header': 'Nombre Proveedor', 'width': 30},
     {'key': 'tax_id', 'header': 'CIF Proveedor', 'width': 14},
-    {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
     {'key': 'receiver_name', 'header': 'Receptor', 'width': 30},
     {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
-    {'key': 'sociedad', 'header': 'Cód. Empresa', 'width': 12},
     {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
     {'key': 'tax_rate', 'header': 'Código IVA', 'width': 10},
     {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
