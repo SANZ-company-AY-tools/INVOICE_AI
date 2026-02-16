@@ -38,6 +38,7 @@ AZURE_CLIENT_SECRET = os.environ.get('AZURE_CLIENT_SECRET', '')
 AZURE_TENANT_ID = os.environ.get('AZURE_TENANT_ID', 'bdab45bf-1644-4fe5-ae0f-66bde297f9f0')
 AZURE_AUTHORITY = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
 AZURE_SCOPE = ["User.Read"]
+SHAREPOINT_SCOPE = ["User.Read", "Files.Read.All", "Sites.Read.All"]
 
 # Ensure directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -133,92 +134,229 @@ def index():
     return render_template('index.html', user=user, client_id=AZURE_CLIENT_ID)
 
 
+@app.route('/sharepoint/login')
+@login_required
+def sharepoint_login():
+    """Redirect to Microsoft login with SharePoint/Files permissions."""
+    msal_app = get_msal_app()
+    redirect_uri = url_for('sharepoint_callback', _external=True)
+
+    auth_url = msal_app.get_authorization_request_url(
+        SHAREPOINT_SCOPE,
+        redirect_uri=redirect_uri,
+        prompt="consent"
+    )
+    return redirect(auth_url)
+
+
 @app.route('/sharepoint/callback')
+@login_required
 def sharepoint_callback():
-    """Callback page for SharePoint file picker."""
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head><title>SharePoint Picker</title></head>
-    <body>
-        <h2>Selecciona archivos de SharePoint</h2>
-        <div id="picker"></div>
-        <script>
-            // Get access token from URL fragment
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
+    """Handle SharePoint OAuth callback - store Graph token in session."""
+    if 'error' in request.args:
+        return f"Error: {request.args.get('error_description', 'Unknown error')}", 400
 
-            if (accessToken) {
-                // Fetch files from OneDrive/SharePoint root
-                fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-                    headers: { 'Authorization': 'Bearer ' + accessToken }
+    if 'code' not in request.args:
+        return redirect(url_for('sharepoint_login'))
+
+    msal_app = get_msal_app()
+    redirect_uri = url_for('sharepoint_callback', _external=True)
+
+    result = msal_app.acquire_token_by_authorization_code(
+        request.args['code'],
+        scopes=SHAREPOINT_SCOPE,
+        redirect_uri=redirect_uri
+    )
+
+    if 'error' in result:
+        return f"Error SharePoint: {result.get('error_description', 'Could not acquire token')}", 400
+
+    # Store Graph access token in session
+    session['graph_token'] = result.get('access_token')
+    return redirect(url_for('index'))
+
+
+@app.route('/sharepoint/browse')
+@login_required
+def sharepoint_browse():
+    """Browse SharePoint/OneDrive files. Supports folder navigation."""
+    import requests as req
+
+    token = session.get('graph_token')
+    if not token:
+        return jsonify({'error': 'no_token', 'login_url': url_for('sharepoint_login')}), 401
+
+    # Get folder_id param for navigation (empty = root)
+    folder_id = request.args.get('folder_id', '')
+    source = request.args.get('source', 'onedrive')  # onedrive or site
+
+    try:
+        headers = {'Authorization': f'Bearer {token}'}
+
+        if source == 'onedrive':
+            if folder_id:
+                url = f'https://graph.microsoft.com/v1.0/me/drive/items/{folder_id}/children?$top=200'
+            else:
+                url = 'https://graph.microsoft.com/v1.0/me/drive/root/children?$top=200'
+        else:
+            # SharePoint site drive
+            site_id = request.args.get('site_id', '')
+            drive_id = request.args.get('drive_id', '')
+            if folder_id:
+                url = f'https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{folder_id}/children?$top=200'
+            else:
+                url = f'https://graph.microsoft.com/v1.0/drives/{drive_id}/root/children?$top=200'
+
+        resp = req.get(url, headers=headers)
+
+        if resp.status_code == 401:
+            session.pop('graph_token', None)
+            return jsonify({'error': 'no_token', 'login_url': url_for('sharepoint_login')}), 401
+
+        if not resp.ok:
+            return jsonify({'error': f'Graph API error: {resp.status_code}'}), 500
+
+        data = resp.json()
+        items = []
+        allowed_exts = {'.pdf', '.png', '.jpg', '.jpeg', '.docx', '.tiff', '.bmp', '.gif'}
+
+        for item in data.get('value', []):
+            is_folder = 'folder' in item
+            name = item.get('name', '')
+            ext = os.path.splitext(name)[1].lower()
+
+            if is_folder or ext in allowed_exts:
+                items.append({
+                    'id': item['id'],
+                    'name': name,
+                    'is_folder': is_folder,
+                    'size': item.get('size', 0),
+                    'modified': item.get('lastModifiedDateTime', ''),
+                    'download_url': item.get('@microsoft.graph.downloadUrl', ''),
                 })
-                .then(r => r.json())
-                .then(data => {
-                    const picker = document.getElementById('picker');
-                    picker.innerHTML = '<h3>Tus archivos:</h3>';
 
-                    const allowedExts = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.tiff'];
-                    const files = data.value.filter(f => f.file && allowedExts.some(ext => f.name.toLowerCase().endsWith(ext)));
+        return jsonify({'items': items})
 
-                    files.forEach(file => {
-                        const btn = document.createElement('button');
-                        btn.textContent = file.name;
-                        btn.style.cssText = 'display:block;margin:5px;padding:10px;cursor:pointer;';
-                        btn.onclick = () => {
-                            window.opener.postMessage({
-                                type: 'sharepoint_files',
-                                accessToken: accessToken,
-                                files: [{
-                                    name: file.name,
-                                    downloadUrl: file['@microsoft.graph.downloadUrl']
-                                }]
-                            }, window.location.origin);
-                        };
-                        picker.appendChild(btn);
-                    });
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-                    if (files.length === 0) {
-                        picker.innerHTML += '<p>No se encontraron facturas (PDF, PNG, JPG, DOCX)</p>';
-                    }
+
+@app.route('/sharepoint/sites')
+@login_required
+def sharepoint_sites():
+    """List SharePoint sites the user has access to."""
+    import requests as req
+
+    token = session.get('graph_token')
+    if not token:
+        return jsonify({'error': 'no_token', 'login_url': url_for('sharepoint_login')}), 401
+
+    try:
+        headers = {'Authorization': f'Bearer {token}'}
+
+        # Search for sites the user follows or has access to
+        resp = req.get('https://graph.microsoft.com/v1.0/sites?search=*', headers=headers)
+
+        if resp.status_code == 401:
+            session.pop('graph_token', None)
+            return jsonify({'error': 'no_token', 'login_url': url_for('sharepoint_login')}), 401
+
+        sites = []
+        if resp.ok:
+            for site in resp.json().get('value', []):
+                # Get drives for each site
+                drives_resp = req.get(f'https://graph.microsoft.com/v1.0/sites/{site["id"]}/drives', headers=headers)
+                drives = []
+                if drives_resp.ok:
+                    for d in drives_resp.json().get('value', []):
+                        drives.append({'id': d['id'], 'name': d.get('name', 'Documents')})
+
+                sites.append({
+                    'id': site['id'],
+                    'name': site.get('displayName', site.get('name', '')),
+                    'url': site.get('webUrl', ''),
+                    'drives': drives
                 })
-                .catch(err => {
-                    document.body.innerHTML = '<p>Error al cargar archivos: ' + err.message + '</p>';
-                });
-            } else {
-                document.body.innerHTML = '<p>Error de autenticación</p>';
-            }
-        </script>
-    </body>
-    </html>
-    '''
+
+        return jsonify({'sites': sites})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/sharepoint/download', methods=['POST'])
 @login_required
 def sharepoint_download():
-    """Download file from SharePoint/OneDrive."""
-    import requests
+    """Download files from SharePoint/OneDrive and add them to upload queue."""
+    import requests as req
+
+    token = session.get('graph_token')
+    if not token:
+        return jsonify({'error': 'no_token'}), 401
 
     data = request.get_json()
-    download_url = data.get('downloadUrl')
-    filename = data.get('name')
-    access_token = data.get('accessToken')
+    file_ids = data.get('file_ids', [])
 
-    if not download_url or not access_token:
-        return jsonify({'error': 'Missing download URL or token'}), 400
+    if not file_ids:
+        return jsonify({'error': 'No files selected'}), 400
 
-    # Download file from Microsoft Graph
-    response = requests.get(download_url, headers={'Authorization': f'Bearer {access_token}'})
+    headers = {'Authorization': f'Bearer {token}'}
+    session_id = str(uuid.uuid4())[:8]
+    session_folder = os.path.join(app.config['UPLOAD_FOLDER'], session_id)
+    os.makedirs(session_folder, exist_ok=True)
 
-    if response.ok:
-        return response.content, 200, {
-            'Content-Type': response.headers.get('Content-Type', 'application/octet-stream'),
-            'Content-Disposition': f'attachment; filename="{filename}"'
+    downloaded = []
+    for file_info in file_ids:
+        try:
+            file_id = file_info['id']
+            filename = secure_filename(file_info['name'])
+            drive_id = file_info.get('drive_id', '')
+
+            # Get download URL from Graph API
+            if drive_id:
+                url = f'https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{file_id}/content'
+            else:
+                url = f'https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content'
+
+            resp = req.get(url, headers=headers, allow_redirects=True)
+            if resp.ok:
+                filepath = os.path.join(session_folder, filename)
+                with open(filepath, 'wb') as f:
+                    f.write(resp.content)
+                downloaded.append(filepath)
+        except Exception as e:
+            print(f"Error downloading {file_info.get('name')}: {e}")
+
+    if not downloaded:
+        return jsonify({'error': 'No files could be downloaded'}), 500
+
+    # Process invoices
+    try:
+        results = extractor.process_multiple_files(downloaded)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        excel_filename = f'facturas_{session_id}_{timestamp}.xlsx'
+        excel_path = excel_gen.generate_from_invoices(
+            results, app.config['OUTPUT_FOLDER'], excel_filename
+        )
+
+        response_data = {
+            'success': True,
+            'session_id': session_id,
+            'files_processed': len(downloaded),
+            'results': [],
+            'excel_filename': excel_filename,
+            'download_url': url_for('download_excel', filename=excel_filename)
         }
 
-    return jsonify({'error': 'Failed to download file'}), 500
+        for r in results:
+            preview = {k: v for k, v in r.items() if k != 'raw_text'}
+            response_data['results'].append(preview)
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        return jsonify({'error': f'Processing error: {str(e)}'}), 500
 
 
 @app.route('/upload', methods=['POST'])

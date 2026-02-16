@@ -335,6 +335,131 @@
             box-shadow: 0 6px 20px rgba(0, 120, 212, 0.45);
         }
 
+        /* SharePoint Modal */
+        .sp-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .sp-overlay.active { display: flex; }
+        .sp-modal {
+            background: white;
+            border-radius: 16px;
+            width: 700px;
+            max-width: 95vw;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .sp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .sp-header h3 { margin: 0; font-size: 18px; color: #1f2937; }
+        .sp-close {
+            background: none; border: none; font-size: 24px; cursor: pointer;
+            color: #6b7280; padding: 4px 8px; border-radius: 6px;
+        }
+        .sp-close:hover { background: #f3f4f6; }
+        .sp-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0 24px;
+        }
+        .sp-tab {
+            padding: 12px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .sp-tab.active { color: #0078d4; border-bottom-color: #0078d4; font-weight: 600; }
+        .sp-tab:hover { color: #0078d4; }
+        .sp-breadcrumb {
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #6b7280;
+            flex-wrap: wrap;
+        }
+        .sp-breadcrumb a {
+            color: #0078d4;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .sp-breadcrumb a:hover { text-decoration: underline; }
+        .sp-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 24px 16px;
+        }
+        .sp-loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .sp-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 12px;
+        }
+        .sp-item:hover { background: #f3f4f6; }
+        .sp-item.selected { background: #dbeafe; }
+        .sp-item-icon { font-size: 22px; width: 32px; text-align: center; flex-shrink: 0; }
+        .sp-item-name { flex: 1; font-size: 14px; color: #1f2937; }
+        .sp-item-size { font-size: 12px; color: #9ca3af; }
+        .sp-item-check {
+            width: 20px; height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .sp-item.selected .sp-item-check {
+            background: #0078d4;
+            border-color: #0078d4;
+            color: white;
+        }
+        .sp-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .sp-selected-count { font-size: 13px; color: #6b7280; }
+        .sp-import-btn {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .sp-import-btn:hover { background: #005a9e; }
+        .sp-import-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
         .btn svg {
             width: 20px;
             height: 20px;
@@ -985,56 +1110,293 @@
 
         // SharePoint integration
         const sharepointBtn = document.getElementById('sharepointBtn');
+        const spOverlay = document.getElementById('spOverlay');
+        const spBody = document.getElementById('spBody');
+        const spBreadcrumb = document.getElementById('spBreadcrumb');
+        const spSelectedCount = document.getElementById('spSelectedCount');
+        const spImportBtn = document.getElementById('spImportBtn');
+
+        let spSelectedFiles = [];
+        let spNavigationStack = []; // [{name, folder_id, source, drive_id}]
+        let spCurrentSource = 'onedrive';
+        let spCurrentDriveId = '';
 
         sharepointBtn.addEventListener('click', async () => {
-            const clientId = '{{ client_id }}';
-            const redirectUri = window.location.origin + '/sharepoint/callback';
+            spSelectedFiles = [];
+            spNavigationStack = [];
+            spCurrentSource = 'onedrive';
+            updateSpSelectedCount();
+            spOverlay.classList.add('active');
+            loadSpFolder('');
+        });
 
-            // Open Microsoft picker
-            const pickerUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
-                `client_id=${clientId}` +
-                `&response_type=token` +
-                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-                `&scope=${encodeURIComponent('Files.Read.All Sites.Read.All')}` +
-                `&prompt=select_account`;
+        document.getElementById('spClose').addEventListener('click', () => {
+            spOverlay.classList.remove('active');
+        });
 
-            const popup = window.open(pickerUrl, 'SharePointPicker', 'width=600,height=700');
+        spOverlay.addEventListener('click', (e) => {
+            if (e.target === spOverlay) spOverlay.classList.remove('active');
+        });
 
-            // Listen for message from popup
-            window.addEventListener('message', async function handler(event) {
-                if (event.origin !== window.location.origin) return;
+        // Tab switching
+        document.querySelectorAll('.sp-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.sp-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.target;
+                spSelectedFiles = [];
+                spNavigationStack = [];
+                updateSpSelectedCount();
 
-                if (event.data.type === 'sharepoint_files') {
-                    window.removeEventListener('message', handler);
-                    popup.close();
-
-                    // Download files from SharePoint
-                    for (const file of event.data.files) {
-                        try {
-                            const response = await fetch('/sharepoint/download', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    downloadUrl: file.downloadUrl,
-                                    name: file.name,
-                                    accessToken: event.data.accessToken
-                                })
-                            });
-
-                            if (response.ok) {
-                                const blob = await response.blob();
-                                const downloadedFile = new File([blob], file.name, { type: blob.type });
-                                selectedFiles.push(downloadedFile);
-                            }
-                        } catch (err) {
-                            console.error('Error downloading file:', err);
-                        }
-                    }
-
-                    renderFileList();
+                if (target === 'onedrive') {
+                    spCurrentSource = 'onedrive';
+                    loadSpFolder('');
+                } else if (target === 'sharepoint') {
+                    spCurrentSource = 'site';
+                    loadSpSites();
                 }
             });
         });
+
+        async function loadSpFolder(folderId) {
+            spBody.innerHTML = '<div class="sp-loading">Cargando archivos...</div>';
+            updateBreadcrumb();
+
+            try {
+                let url = `/sharepoint/browse?folder_id=${encodeURIComponent(folderId)}&source=${spCurrentSource}`;
+                if (spCurrentDriveId) url += `&drive_id=${encodeURIComponent(spCurrentDriveId)}`;
+
+                const resp = await fetch(url);
+                const data = await resp.json();
+
+                if (data.error === 'no_token') {
+                    window.location.href = data.login_url;
+                    return;
+                }
+
+                if (data.error) {
+                    spBody.innerHTML = `<div class="sp-loading">Error: ${data.error}</div>`;
+                    return;
+                }
+
+                if (!data.items || data.items.length === 0) {
+                    spBody.innerHTML = '<div class="sp-loading">No se encontraron archivos compatibles</div>';
+                    return;
+                }
+
+                // Sort: folders first, then files
+                data.items.sort((a, b) => {
+                    if (a.is_folder && !b.is_folder) return -1;
+                    if (!a.is_folder && b.is_folder) return 1;
+                    return a.name.localeCompare(b.name);
+                });
+
+                spBody.innerHTML = data.items.map(item => {
+                    const icon = item.is_folder ? '📁' : getFileIcon(item.name);
+                    const size = item.is_folder ? '' : formatFileSize(item.size);
+                    const isSelected = spSelectedFiles.some(f => f.id === item.id);
+                    return `
+                        <div class="sp-item ${isSelected ? 'selected' : ''}"
+                             data-id="${item.id}" data-name="${item.name}"
+                             data-folder="${item.is_folder}" data-drive="${spCurrentDriveId}">
+                            ${!item.is_folder ? `<div class="sp-item-check">${isSelected ? '✓' : ''}</div>` : ''}
+                            <div class="sp-item-icon">${icon}</div>
+                            <div class="sp-item-name">${item.name}</div>
+                            <div class="sp-item-size">${size}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Add click handlers
+                spBody.querySelectorAll('.sp-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const isFolder = el.dataset.folder === 'true';
+                        if (isFolder) {
+                            spNavigationStack.push({
+                                name: el.dataset.name,
+                                folder_id: el.dataset.id
+                            });
+                            loadSpFolder(el.dataset.id);
+                        } else {
+                            toggleFileSelection(el);
+                        }
+                    });
+                });
+
+            } catch (err) {
+                spBody.innerHTML = `<div class="sp-loading">Error de conexión: ${err.message}</div>`;
+            }
+        }
+
+        async function loadSpSites() {
+            spBody.innerHTML = '<div class="sp-loading">Cargando sitios SharePoint...</div>';
+            spBreadcrumb.innerHTML = '📍 Sitios SharePoint';
+
+            try {
+                const resp = await fetch('/sharepoint/sites');
+                const data = await resp.json();
+
+                if (data.error === 'no_token') {
+                    window.location.href = data.login_url;
+                    return;
+                }
+
+                if (!data.sites || data.sites.length === 0) {
+                    spBody.innerHTML = '<div class="sp-loading">No se encontraron sitios SharePoint</div>';
+                    return;
+                }
+
+                spBody.innerHTML = data.sites.map(site => {
+                    return site.drives.map(drive => `
+                        <div class="sp-item" data-site="${site.id}" data-drive="${drive.id}"
+                             data-name="${site.name} - ${drive.name}" data-folder="true">
+                            <div class="sp-item-icon">🏢</div>
+                            <div class="sp-item-name">${site.name} <span style="color:#9ca3af">/ ${drive.name}</span></div>
+                        </div>
+                    `).join('');
+                }).join('');
+
+                spBody.querySelectorAll('.sp-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        spCurrentDriveId = el.dataset.drive;
+                        spNavigationStack = [{name: el.dataset.name, folder_id: ''}];
+                        loadSpFolder('');
+                    });
+                });
+
+            } catch (err) {
+                spBody.innerHTML = `<div class="sp-loading">Error: ${err.message}</div>`;
+            }
+        }
+
+        function toggleFileSelection(el) {
+            const id = el.dataset.id;
+            const idx = spSelectedFiles.findIndex(f => f.id === id);
+
+            if (idx >= 0) {
+                spSelectedFiles.splice(idx, 1);
+                el.classList.remove('selected');
+                el.querySelector('.sp-item-check').textContent = '';
+            } else {
+                spSelectedFiles.push({
+                    id: id,
+                    name: el.dataset.name,
+                    drive_id: el.dataset.drive || spCurrentDriveId
+                });
+                el.classList.add('selected');
+                el.querySelector('.sp-item-check').textContent = '✓';
+            }
+            updateSpSelectedCount();
+        }
+
+        function updateSpSelectedCount() {
+            const n = spSelectedFiles.length;
+            spSelectedCount.textContent = n === 0 ? 'Ningún archivo seleccionado' : `${n} archivo${n > 1 ? 's' : ''} seleccionado${n > 1 ? 's' : ''}`;
+            spImportBtn.disabled = n === 0;
+        }
+
+        function updateBreadcrumb() {
+            let html = '<a onclick="spGoToRoot()">📁 Raíz</a>';
+            spNavigationStack.forEach((item, i) => {
+                html += ` › <a onclick="spGoTo(${i})">${item.name}</a>`;
+            });
+            spBreadcrumb.innerHTML = html;
+        }
+
+        window.spGoToRoot = function() {
+            spNavigationStack = [];
+            loadSpFolder('');
+        };
+
+        window.spGoTo = function(index) {
+            const target = spNavigationStack[index];
+            spNavigationStack = spNavigationStack.slice(0, index + 1);
+            loadSpFolder(target.folder_id);
+        };
+
+        // Import selected files
+        spImportBtn.addEventListener('click', async () => {
+            if (spSelectedFiles.length === 0) return;
+
+            spOverlay.classList.remove('active');
+
+            // Show progress
+            progressSection.classList.add('visible');
+            progressStatus.textContent = `Descargando ${spSelectedFiles.length} archivo(s) desde SharePoint...`;
+            let fakeProgress = 0;
+            const progressInterval = setInterval(() => {
+                fakeProgress = Math.min(fakeProgress + Math.random() * 8, 90);
+                progressFill.style.width = fakeProgress + '%';
+            }, 500);
+
+            try {
+                const response = await fetch('/sharepoint/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_ids: spSelectedFiles })
+                });
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                const data = await response.json();
+
+                if (data.error === 'no_token') {
+                    window.location.href = '/sharepoint/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error al procesar');
+                }
+
+                setTimeout(() => {
+                    progressSection.classList.remove('visible');
+                    displayResults(data);
+                }, 600);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressSection.classList.remove('visible');
+                errorText.textContent = error.message;
+                errorAlert.classList.add('visible');
+            }
+        });
+
+        function getFileIcon(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            const icons = { pdf: '📄', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', docx: '📝', tiff: '🖼️', bmp: '🖼️' };
+            return icons[ext] || '📎';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return '';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
     </script>
+
+    <!-- SharePoint File Browser Modal -->
+    <div class="sp-overlay" id="spOverlay">
+        <div class="sp-modal">
+            <div class="sp-header">
+                <h3>Importar desde SharePoint / OneDrive</h3>
+                <button class="sp-close" id="spClose">&times;</button>
+            </div>
+            <div class="sp-tabs">
+                <button class="sp-tab active" data-target="onedrive">OneDrive</button>
+                <button class="sp-tab" data-target="sharepoint">SharePoint</button>
+            </div>
+            <div class="sp-breadcrumb" id="spBreadcrumb">📁 Raíz</div>
+            <div class="sp-body" id="spBody">
+                <div class="sp-loading">Cargando...</div>
+            </div>
+            <div class="sp-footer">
+                <span class="sp-selected-count" id="spSelectedCount">Ningún archivo seleccionado</span>
+                <button class="sp-import-btn" id="spImportBtn" disabled>Importar y procesar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
