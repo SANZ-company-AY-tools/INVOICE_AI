@@ -127,6 +127,7 @@ COLUMNS_CON_PEDIDO = [
     {'key': 'date', 'header': 'Fecha Factura', 'width': 14},
     {'key': 'fecha_contab', 'header': 'Fecha Contab.', 'width': 14},
     {'key': 'invoice_number', 'header': 'Referencia', 'width': 16},
+    {'key': 'order_number', 'header': 'Numero Pedido', 'width': 16},
     {'key': 'cuenta_proveedor', 'header': 'Cuenta Proveedor', 'width': 16},
     {'key': 'company_name', 'header': 'Nombre Proveedor', 'width': 30},
     {'key': 'tax_id', 'header': 'CIF Proveedor', 'width': 14},
@@ -137,7 +138,6 @@ COLUMNS_CON_PEDIDO = [
     {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00'},
     {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
     {'key': 'texto', 'header': 'Texto', 'width': 35},
-    {'key': 'order_number', 'header': 'Numero Pedido', 'width': 16},
 ]
 
 # SIN PEDIDO (FI)

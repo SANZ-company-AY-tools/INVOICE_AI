@@ -324,6 +324,19 @@
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
         }
 
+        .btn-download {
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
+            padding: 0.6rem 1.25rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.45);
+        }
+
         .btn-sharepoint {
             background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
             color: white;
@@ -967,8 +980,8 @@
             <div class="results-header">
                 <h2 class="results-title">Resultados del análisis</h2>
                 <div style="display:flex;gap:10px;">
-                    <a class="btn btn-success" id="downloadBtn" href="#" download>EXCEL</a>
-                    <a class="btn btn-sharepoint" id="downloadCsvBtn" href="#" download>CSV</a>
+                    <a class="btn btn-download" id="downloadBtn" href="#" download>EXCEL</a>
+                    <a class="btn btn-download" id="downloadCsvBtn" href="#" download>CSV</a>
                 </div>
             </div>
 
@@ -1184,10 +1197,10 @@
                 // CON PEDIDO headers
                 resultsHead.innerHTML = `<tr>
                     <th>Cod. Empresa</th><th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
-                    <th>Cuenta Proveedor</th><th>Nombre Proveedor</th><th>CIF Proveedor</th>
+                    <th>Numero Pedido</th><th>Cuenta Proveedor</th><th>Nombre Proveedor</th><th>CIF Proveedor</th>
                     <th>Receptor</th><th>CIF Receptor</th>
                     <th>Base</th><th>% IVA</th><th>IVA</th><th>Importe</th>
-                    <th>Texto</th><th>Numero Pedido</th><th>Estado</th>
+                    <th>Texto</th><th>Estado</th>
                 </tr>`;
 
                 resultsBody.innerHTML = expandedRows.map(r => {
@@ -1198,6 +1211,7 @@
                         <td>${formatDateDMY(r.date)}</td>
                         <td>${today}</td>
                         <td>${r.invoice_number || '-'}</td>
+                        <td>${r.order_number || '-'}</td>
                         <td></td>
                         <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
                         <td>${r.tax_id || '-'}</td>
@@ -1208,7 +1222,6 @@
                         <td class="amount">${formatCurrency(r.tax_amount, currency)}</td>
                         <td class="amount">${formatCurrency(r.total, currency)}</td>
                         <td class="concept" title="${getTexto(r)}">${getTexto(r)}</td>
-                        <td>${r.order_number || '-'}</td>
                         <td><span class="status-badge ${r.status === 'success' ? 'success' : 'error'}" title="${r.error || ''}">
                             ${r.status === 'success' ? '&#10003;' : '&#10007;'}
                         </span></td>
