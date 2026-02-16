@@ -5,7 +5,7 @@ Two formats: CON PEDIDO (MIRO) and SIN PEDIDO (FI).
 """
 
 import csv
-from datetime import date
+from datetime import date, datetime
 from typing import List, Dict
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -38,10 +38,22 @@ def _get_sociedad(receiver_name: str) -> str:
     return ''
 
 
+def _format_date_ddmmyyyy(date_str: str) -> str:
+    """Convert date string to DD/MM/YYYY format."""
+    if not date_str:
+        return ''
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%d.%m.%Y', '%Y/%m/%d'):
+        try:
+            return datetime.strptime(date_str.strip(), fmt).strftime('%d/%m/%Y')
+        except (ValueError, AttributeError):
+            continue
+    return date_str  # Return as-is if no format matches
+
+
 def _expand_invoices(data: List[Dict]) -> List[Dict]:
     """Expand invoices so each combination of order number + tax line gets its own row."""
     expanded = []
-    today = date.today().strftime('%Y-%m-%d')
+    today = date.today().strftime('%d/%m/%Y')
 
     for invoice in data:
         if invoice.get('status') != 'success':
@@ -68,9 +80,13 @@ def _expand_invoices(data: List[Dict]) -> List[Dict]:
         num_factura = invoice.get('invoice_number', '')
         texto = f"{proveedor} - {num_factura}" if proveedor and num_factura else proveedor or num_factura or ''
 
+        # Format invoice date to DD/MM/YYYY
+        fecha_factura = _format_date_ddmmyyyy(invoice.get('date', ''))
+
         for on in order_nums:
             for tl in tax_lines:
                 row = dict(invoice)
+                row['date'] = fecha_factura
                 row['order_number'] = str(on) if on else ''
                 row['base_amount'] = tl.get('base_amount')
                 row['tax_rate'] = tl.get('tax_rate')

@@ -1119,7 +1119,18 @@
                 const n = r.invoice_number || '';
                 return p && n ? `${p} - ${n}` : p || n || '-';
             }
-            const today = new Date().toISOString().split('T')[0];
+            // Format date to DD/MM/YYYY
+            function formatDateDMY(dateStr) {
+                if (!dateStr) return '-';
+                // Try YYYY-MM-DD
+                const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+                // Already DD/MM/YYYY
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+                return dateStr;
+            }
+            const now = new Date();
+            const today = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
 
             if (conPedido) {
                 // CON PEDIDO headers
@@ -1136,7 +1147,7 @@
                     const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? `${r.tax_rate}%` : '-';
                     return `<tr>
                         <td><strong>${getSociedad(r.receiver_name)}</strong></td>
-                        <td>${r.date || '-'}</td>
+                        <td>${formatDateDMY(r.date)}</td>
                         <td>${today}</td>
                         <td>${r.invoice_number || '-'}</td>
                         <td></td>
@@ -1169,7 +1180,7 @@
                     const codigoIva = r.tax_rate !== null && r.tax_rate !== undefined ? r.tax_rate : '-';
                     return `<tr>
                         <td><strong>${getSociedad(r.receiver_name)}</strong></td>
-                        <td>${r.date || '-'}</td>
+                        <td>${formatDateDMY(r.date)}</td>
                         <td>${today}</td>
                         <td>${r.invoice_number || '-'}</td>
                         <td></td>
