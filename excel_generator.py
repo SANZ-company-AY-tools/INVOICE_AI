@@ -116,6 +116,7 @@ COLUMNS_CON_PEDIDO = [
     {'key': 'receiver_tax_id', 'header': 'CIF Receptor', 'width': 14},
     {'key': 'base_amount', 'header': 'Base', 'width': 12, 'format': '#,##0.00'},
     {'key': 'tax_rate', 'header': '% IVA', 'width': 8, 'format': '0"%"'},
+    {'key': 'tax_amount', 'header': 'IVA', 'width': 12, 'format': '#,##0.00'},
     {'key': 'total', 'header': 'Importe', 'width': 14, 'format': '#,##0.00'},
     {'key': 'texto', 'header': 'Texto', 'width': 35},
     {'key': 'order_number', 'header': 'Numero Pedido', 'width': 16},

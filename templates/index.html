@@ -1138,7 +1138,7 @@
                     <th>Cod. Empresa</th><th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
                     <th>Cuenta Proveedor</th><th>Nombre Proveedor</th><th>CIF Proveedor</th>
                     <th>Receptor</th><th>CIF Receptor</th>
-                    <th>Base</th><th>% IVA</th><th>Importe</th>
+                    <th>Base</th><th>% IVA</th><th>IVA</th><th>Importe</th>
                     <th>Texto</th><th>Numero Pedido</th><th>Estado</th>
                 </tr>`;
 
@@ -1157,6 +1157,7 @@
                         <td>${r.receiver_tax_id || '-'}</td>
                         <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
                         <td class="amount">${taxRate}</td>
+                        <td class="amount">${formatCurrency(r.tax_amount, currency)}</td>
                         <td class="amount">${formatCurrency(r.total, currency)}</td>
                         <td class="concept" title="${getTexto(r)}">${getTexto(r)}</td>
                         <td>${r.order_number || '-'}</td>
