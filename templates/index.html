@@ -296,14 +296,19 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            letter-spacing: 0.3px;
+            width: 100%;
+            justify-content: center;
         }
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+            box-shadow: 0 8px 28px rgba(13, 148, 136, 0.5);
         }
 
         .btn-primary:disabled {
@@ -311,6 +316,27 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0.75rem 0;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #d1d5db;
+        }
+        .or-divider span {
+            font-size: 13px;
+            color: #9ca3af;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
         .btn-success {
@@ -928,6 +954,8 @@
                 </div>
                 <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.gif,.docx,.doc">
             </div>
+
+            <div class="or-divider"><span>o importa desde la nube</span></div>
 
             <button class="btn btn-sharepoint" id="sharepointBtn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
