@@ -926,25 +926,7 @@
 
             <div class="table-container">
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Sociedad</th>
-                            <th>Emisor</th>
-                            <th>CIF Emisor</th>
-                            <th>Receptor</th>
-                            <th>CIF Receptor</th>
-                            <th>Nº Pedido</th>
-                            <th>Fecha</th>
-                            <th>Concepto</th>
-                            <th>Divisa</th>
-                            <th>Base</th>
-                            <th>%IVA</th>
-                            <th>IVA</th>
-                            <th>Total</th>
-                            <th>Cuenta</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
+                    <thead id="resultsHead"></thead>
                     <tbody id="resultsBody"></tbody>
                 </table>
             </div>
@@ -1128,37 +1110,85 @@
                 });
             });
 
-            resultsBody.innerHTML = expandedRows.map(r => {
-                const account = r.accounting_account
-                    ? `${r.accounting_account} - ${r.accounting_description || ''}`
-                    : '-';
-                const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? `${r.tax_rate}%` : '-';
-                const currency = r.currency || 'EUR';
-                return `
-                <tr>
-                    <td><strong>${getSociedad(r.receiver_name)}</strong></td>
-                    <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
-                    <td>${r.tax_id || '-'}</td>
-                    <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
-                    <td>${r.receiver_tax_id || '-'}</td>
-                    <td>${r.order_number || '-'}</td>
-                    <td>${r.date || '-'}</td>
-                    <td class="concept" title="${r.concept || '-'}">${r.concept || '-'}</td>
-                    <td class="amount">${currency}</td>
-                    <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
-                    <td class="amount">${taxRate}</td>
-                    <td class="amount">${formatCurrency(r.tax_amount, currency)}</td>
-                    <td class="amount">${formatCurrency(r.total, currency)}</td>
-                    <td class="account" title="${account}">${r.accounting_account || '-'}</td>
-                    <td>
-                        <span class="status-badge ${r.status === 'success' ? 'success' : 'error'}" title="${r.error || ''}">
-                            ${r.status === 'success' ?
-                                '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>' :
-                                '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>'}
-                        </span>
-                    </td>
-                </tr>
-            `}).join('');
+            const conPedido = conPedidoCheckbox.checked;
+            const resultsHead = document.getElementById('resultsHead');
+
+            // Build "Texto" helper
+            function getTexto(r) {
+                const p = r.company_name || '';
+                const n = r.invoice_number || '';
+                return p && n ? `${p} - ${n}` : p || n || '-';
+            }
+            const today = new Date().toISOString().split('T')[0];
+
+            if (conPedido) {
+                // CON PEDIDO headers
+                resultsHead.innerHTML = `<tr>
+                    <th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
+                    <th>Nombre Proveedor</th><th>CIF Proveedor</th><th>Cuenta Proveedor</th>
+                    <th>Receptor</th><th>CIF Receptor</th><th>Cód. Empresa</th>
+                    <th>Base</th><th>% IVA</th><th>IVA</th><th>Importe</th>
+                    <th>Texto</th><th>Nº Pedido</th><th>Estado</th>
+                </tr>`;
+
+                resultsBody.innerHTML = expandedRows.map(r => {
+                    const currency = r.currency || 'EUR';
+                    const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? `${r.tax_rate}%` : '-';
+                    return `<tr>
+                        <td>${r.date || '-'}</td>
+                        <td>${today}</td>
+                        <td>${r.invoice_number || '-'}</td>
+                        <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
+                        <td>${r.tax_id || '-'}</td>
+                        <td></td>
+                        <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
+                        <td>${r.receiver_tax_id || '-'}</td>
+                        <td><strong>${getSociedad(r.receiver_name)}</strong></td>
+                        <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
+                        <td class="amount">${taxRate}</td>
+                        <td class="amount">${formatCurrency(r.tax_amount, currency)}</td>
+                        <td class="amount">${formatCurrency(r.total, currency)}</td>
+                        <td class="concept" title="${getTexto(r)}">${getTexto(r)}</td>
+                        <td>${r.order_number || '-'}</td>
+                        <td><span class="status-badge ${r.status === 'success' ? 'success' : 'error'}" title="${r.error || ''}">
+                            ${r.status === 'success' ? '&#10003;' : '&#10007;'}
+                        </span></td>
+                    </tr>`;
+                }).join('');
+            } else {
+                // SIN PEDIDO headers
+                resultsHead.innerHTML = `<tr>
+                    <th>Fecha Factura</th><th>Fecha Contab.</th><th>Referencia</th>
+                    <th>Nombre Proveedor</th><th>CIF Proveedor</th><th>Cuenta Proveedor</th>
+                    <th>Receptor</th><th>CIF Receptor</th><th>Cód. Empresa</th>
+                    <th>Base</th><th>Código IVA</th><th>Importe</th>
+                    <th>Texto</th><th>Cuenta Mayor</th><th>Estado</th>
+                </tr>`;
+
+                resultsBody.innerHTML = expandedRows.map(r => {
+                    const currency = r.currency || 'EUR';
+                    const codigoIva = r.tax_rate !== null && r.tax_rate !== undefined ? r.tax_rate : '-';
+                    return `<tr>
+                        <td>${r.date || '-'}</td>
+                        <td>${today}</td>
+                        <td>${r.invoice_number || '-'}</td>
+                        <td title="${r.company_name || '-'}">${r.company_name || '-'}</td>
+                        <td>${r.tax_id || '-'}</td>
+                        <td></td>
+                        <td title="${r.receiver_name || '-'}">${r.receiver_name || '-'}</td>
+                        <td>${r.receiver_tax_id || '-'}</td>
+                        <td><strong>${getSociedad(r.receiver_name)}</strong></td>
+                        <td class="amount">${formatCurrency(r.base_amount, currency)}</td>
+                        <td class="amount">${codigoIva}</td>
+                        <td class="amount">${formatCurrency(r.total, currency)}</td>
+                        <td class="concept" title="${getTexto(r)}">${getTexto(r)}</td>
+                        <td></td>
+                        <td><span class="status-badge ${r.status === 'success' ? 'success' : 'error'}" title="${r.error || ''}">
+                            ${r.status === 'success' ? '&#10003;' : '&#10007;'}
+                        </span></td>
+                    </tr>`;
+                }).join('');
+            }
 
             downloadBtn.href = data.download_url;
             document.getElementById('downloadCsvBtn').href = data.csv_download_url;
